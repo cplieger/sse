@@ -129,36 +129,6 @@ Every verdict other than `resumed` yields `Resumed: false` and no replay; the cl
 
 `@cplieger/sse` is published from [web/](web/README.md) to npm and JSR at the repository's release tag. `createStream` owns the connection over `fetch` and `ReadableStream`: it presents the held cursor, validates the hello, measures liveness on bytes against `max(3 × keepalive_ms, 15s)`, closes a hidden tab's stream and reopens it on visibility, backs off with full jitter, and holds incoming frames while the application's `revalidate` runs; `createVersionMap` and `createDigestClient` drive the digest, and `createWorkerHost` with `attachToWorker` share one connection across a profile's tabs through a `SharedWorker` with a per-tab fallback.
 
-## Upgrading from webhttp/v2/sse
-
-Every item is a compile-time or behaviour break for a consumer of the `github.com/cplieger/webhttp/v2/sse` package.
-
-- The package is its own module: import `github.com/cplieger/sse` in place of `github.com/cplieger/webhttp/v2/sse`, and `github.com/cplieger/sse/ssetest` for the test seam. The module requires `github.com/cplieger/webhttp/v3`, which coexists with a consumer's webhttp v2 because each major has its own import path.
-- `New(opts...) (*Hub, error)` replaces the v2 constructor, which returned a bare `*Hub`; an incoherent option set is refused with an error wrapping `ErrConfig`. `MustNew` panics for package-level construction.
-- `Option` is `func(*config) error`: `WithKeepalive` below 1ms, `WithClientBuffer` at or below zero, a CR or LF keepalive name and a negative ring are refused by the option itself; a `WithWriteTimeout` at or below the keepalive, a reply cap above the ring, a TTL below the watchdog floor and a ring without a TTL are refused at the end of `New`, whatever the option order.
-- `Writer.Event(id, name, data)` is now `Writer.Event(name, data)`; hook frames carry no id and only `Publish` assigns offsets.
-- `Writer.Comment` is gone; a comment keepalive is `WithKeepaliveEvent("")`.
-- `OnConnect` receives the `Hello` the client received instead of the v2 replay-bounds struct holding `Floor` and `Head`.
-- Without an `OnConnect` hook the stream opens with the `retry:` field and the hello; the `: connected` comment is gone.
-- `Bounds` is now `Position() Position`, which includes the epoch.
-- `Buffered` is now `Snapshot()`, and each entry's `Data` is cloned; `ReplayEvent.ID` is `Offset` and the entry gains `At`. `QueuedFrames()` is a new gauge.
-- `Shutdown()` is now `Shutdown(ctx) error`; it blocks until every stream has written its reset, bounded by `ctx`.
-- `Publish(ev)` returns `(uint64, error)`: the offset, or `ErrFrameTooLarge` or `ErrInvalidUTF8` with no offset consumed; a reserved `sse:` name, CR or LF in the name and the configured keepalive name panic. A nil hub still answers `(0, nil)`.
-- `Last-Event-ID` is `<epoch>:<offset>` and is parsed by `ParseCursor`; a bare integer is invalid.
-- `WithReplay` defaults to 0 instead of 256, and a non-zero ring requires `WithReplayTTL`.
-- `WithClientBuffer` unset derives `max(ring, 256)`; zero or negative is refused instead of clamped.
-- `WithReplyMaxEvents` is new, default `min(ring, 256)`; a resume needing more frames is answered `gap_budget` instead of the whole ring.
-- Every write to a client runs under `WithWriteTimeout` (default `2 × keepalive`, refused at or below the keepalive); the read deadline is still cleared at connect.
-- Frames are capped at `MaxFrameBytes` (1 MiB, terminating blank line included); `Publish` and `Writer.Event` return `ErrFrameTooLarge` above it.
-- The ring is bounded by bytes as well as count: `WithReplayMaxBytes`, default `64 × MaxFrameBytes`, evicts the oldest entries and moves the floor.
-- `Event.Data` must be UTF-8 and is split on CRLF, CR and LF; invalid UTF-8 returns `ErrInvalidUTF8`; the hub owns `Data` from the call on.
-- A named keepalive frame carries `data: {}` instead of an empty `data:` line.
-- `WithKeepalive(d)` at or below zero no longer disables keepalives; it is refused.
-- `WithKeepaliveEvent` unset defaults to `sse:keepalive` instead of the comment form; `""` selects the comment.
-- `WithReconnectDelay` unset writes `retry: 1500` instead of no field; the field is always written and a non-positive delay is refused.
-- A slow client receives `sse:reset {"reason":"slow"}` under a 250ms deadline before it is closed, instead of a silent cancel; its queued frames are dropped.
-- `Verdict` is new: seven constants, three of them `gap_*`, on `Hello.Verdict`.
-
 ## Contributing
 
 Issues and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
