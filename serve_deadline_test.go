@@ -20,6 +20,12 @@ import (
 const (
 	realKeepalive    = 100 * time.Millisecond
 	realWriteTimeout = 200 * time.Millisecond
+	// The wedge tests publish wedgeFrames MiB before they act on the blocked
+	// write, and under the race detector on a loaded runner that loop alone can
+	// outlast 200ms, after which the peer is already gone and there is nothing
+	// left to reset. The deadline they run under is wide enough to still be
+	// pending when Shutdown reaches the stream.
+	wedgeWriteTimeout = 1500 * time.Millisecond
 	// wedgeFrames of one MiB each exceeds the loopback send and receive buffers
 	// together (measured: the writer blocks after three), so a peer that stops
 	// reading wedges the writer well inside the write timeout.
@@ -110,7 +116,7 @@ func TestServe_slowClientReceivesReset(t *testing.T) {
 
 func TestServe_wedgedPeerWriteTimeout(t *testing.T) {
 	logger, logged := captureLog()
-	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(realWriteTimeout), WithClientBuffer(wedgeFrames))
+	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(wedgeWriteTimeout), WithClientBuffer(wedgeFrames))
 	srv := newRealServer(t, h)
 	resp, sc := openStream(t, srv, srv.URL, nil)
 	defer resp.Body.Close()
@@ -133,7 +139,7 @@ func TestServe_wedgedPeerWriteTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Shutdown against a wedged peer = %v, want nil", err)
 	}
-	if bound := max(realWriteTimeout, resetWriteTimeout) + time.Second; elapsed > bound {
+	if bound := max(wedgeWriteTimeout, resetWriteTimeout) + time.Second; elapsed > bound {
 		t.Errorf("Shutdown took %v, want within max(writeTimeout, resetWriteTimeout) plus scheduling (%v)", elapsed, bound)
 	}
 	log := logged.String()
@@ -342,7 +348,7 @@ func TestServe_peerCloseEndsStream(t *testing.T) {
 
 func TestServe_resetUnwrittenOnWedgedPeer(t *testing.T) {
 	logger, logged := captureLog()
-	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(realWriteTimeout), WithClientBuffer(4))
+	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(wedgeWriteTimeout), WithClientBuffer(4))
 	srv := newRealServer(t, h)
 	resp, sc := openStream(t, srv, srv.URL, nil)
 	defer resp.Body.Close()
