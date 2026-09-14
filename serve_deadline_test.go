@@ -79,6 +79,27 @@ func waitForWedge(t *testing.T, h *Hub, queued int) {
 	})
 }
 
+// logLineHas reports whether ONE record in a captured log carries every attr.
+// A whole-log search cannot state that: it is also satisfied by the attributes
+// sitting on unrelated records.
+func logLineHas(log string, attrs ...string) bool {
+	for line := range strings.SplitSeq(log, "\n") {
+		if lineHasAll(line, attrs...) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasAll(line string, attrs ...string) bool {
+	for _, attr := range attrs {
+		if !strings.Contains(line, attr) {
+			return false
+		}
+	}
+	return true
+}
+
 func TestServe_slowClientReceivesReset(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		logger, logged := captureLog()
@@ -143,8 +164,8 @@ func TestServe_wedgedPeerWriteTimeout(t *testing.T) {
 		t.Errorf("Shutdown took %v, want within max(writeTimeout, resetWriteTimeout) plus scheduling (%v)", elapsed, bound)
 	}
 	log := logged.String()
-	if !strings.Contains(log, "write_timeout=true") || !strings.Contains(log, "reset_unwritten=true") || !strings.Contains(log, "reason=shutdown") {
-		t.Errorf("log = %q, want write_timeout=true reset_unwritten=true reason=shutdown", log)
+	if !logLineHas(log, "write_timeout=true", "reset_unwritten=true", "reason=shutdown") {
+		t.Errorf("log = %q, want one record with write_timeout=true reset_unwritten=true reason=shutdown", log)
 	}
 }
 
@@ -325,8 +346,8 @@ func TestServe_hookWriteTimeoutEndsConnection(t *testing.T) {
 		t.Fatal("the hook did not return within 5s; the write never timed out")
 	}
 	pollUntil(t, 5*time.Second, "Serve to return", func() bool { return h.ClientCount() == 0 })
-	if !strings.Contains(logged.String(), "write=hook") || !strings.Contains(logged.String(), "write_timeout=true") {
-		t.Errorf("log = %q, want the hook write failure with write_timeout=true", logged)
+	if !logLineHas(logged.String(), "write=hook", "write_timeout=true") {
+		t.Errorf("log = %q, want one record with the hook write failure and write_timeout=true", logged)
 	}
 }
 
@@ -381,7 +402,7 @@ func TestServe_resetUnwrittenOnWedgedPeer(t *testing.T) {
 		t.Fatalf("Shutdown waiting on the evicted goroutine = %v, want nil", err)
 	}
 	log := logged.String()
-	if !strings.Contains(log, "reason=slow") || !strings.Contains(log, "reset_unwritten=true") || !strings.Contains(log, "write_timeout=true") {
-		t.Errorf("log = %q, want reason=slow reset_unwritten=true write_timeout=true", log)
+	if !logLineHas(log, "reason=slow", "reset_unwritten=true", "write_timeout=true") {
+		t.Errorf("log = %q, want one record with reason=slow reset_unwritten=true write_timeout=true", log)
 	}
 }

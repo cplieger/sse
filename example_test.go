@@ -60,7 +60,8 @@ func ExampleHub_Serve() {
 	if err != nil {
 		panic(err)
 	}
-	frames, err := ssetest.ReadFrames(first.Body, 3)
+	firstStream := ssetest.NewFrameReader(first.Body)
+	frames, err := firstStream.Read(3)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +72,7 @@ func ExampleHub_Serve() {
 	if _, err := hub.Publish(sse.Event{Name: "notify", Data: []byte(`{"n":1}`)}); err != nil {
 		panic(err)
 	}
-	live, err := ssetest.ReadFrames(first.Body, 1)
+	live, err := firstStream.Read(1)
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +92,8 @@ func ExampleHub_Serve() {
 		panic(err)
 	}
 	defer second.Body.Close()
-	frames, err = ssetest.ReadFrames(second.Body, 4)
+	secondStream := ssetest.NewFrameReader(second.Body)
+	frames, err = secondStream.Read(4)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +105,7 @@ func ExampleHub_Serve() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	fmt.Println(hub.Shutdown(ctx))
-	reset, err := ssetest.ReadFrames(second.Body, 1)
+	reset, err := secondStream.Read(1)
 	if err != nil {
 		panic(err)
 	}
