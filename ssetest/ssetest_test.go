@@ -3,9 +3,11 @@ package ssetest
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -127,6 +129,58 @@ func TestReadFrames_skipsCommentsAndEmptyDispatch(t *testing.T) {
 	}
 	if _, err := ReadFrames(strings.NewReader("data: a\n\n"), 2); err == nil {
 		t.Error("ReadFrames asked for 2 frames of a 1-frame stream = nil error, want io.ErrUnexpectedEOF")
+	}
+}
+
+// chunkReader delivers its payload in fixed-size reads, so a test can put a
+// stream's frames in one read or in separate ones deterministically.
+type chunkReader struct {
+	s    string
+	i    int
+	size int
+}
+
+func (c *chunkReader) Read(p []byte) (int, error) {
+	if c.i >= len(c.s) {
+		return 0, io.EOF
+	}
+	n := copy(p, c.s[c.i:min(c.i+c.size, len(c.s))])
+	c.i += n
+	return n, nil
+}
+
+func TestFrameReader_readsAreIndependentOfChunking(t *testing.T) {
+	const stream = "retry: 1500\n\nevent: sse:hello\ndata: {\"epoch\":\"a\"}\n\ndata: {\"type\":\"connected\"}\n\nid: a:1\nevent: notify\ndata: third\n\n"
+	want := []Frame{
+		{Event: "retry", Data: "1500"},
+		{Event: "sse:hello", Data: `{"epoch":"a"}`},
+		{Data: `{"type":"connected"}`},
+		{ID: "a:1", Event: "notify", Data: "third"},
+	}
+	tests := map[string]int{
+		"one_byte_per_read":        1,
+		"mid_frame_boundaries":     7,
+		"handshake_then_the_rest":  len("retry: 1500\n\nevent: sse:hello\ndata: {\"epoch\":\"a\"}\n\n"),
+		"whole_stream_in_one_read": len(stream),
+	}
+	for name, size := range tests {
+		t.Run(name, func(t *testing.T) {
+			fr := NewFrameReader(&chunkReader{s: stream, size: size})
+			handshake, err := fr.Read(2)
+			if err != nil {
+				t.Fatalf("FrameReader.Read(2) over %d-byte reads = %v, want nil", size, err)
+			}
+			rest, err := fr.Read(0)
+			if err != nil {
+				t.Fatalf("FrameReader.Read(0) over %d-byte reads = %v, want nil", size, err)
+			}
+			got := make([]Frame, 0, len(handshake)+len(rest))
+			got = append(got, handshake...)
+			got = append(got, rest...)
+			if !slices.Equal(got, want) {
+				t.Errorf("FrameReader over %d-byte reads = %+v, want %+v", size, got, want)
+			}
+		})
 	}
 }
 
