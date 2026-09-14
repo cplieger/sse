@@ -1,0 +1,59 @@
+# punused findings adjudicated as false positives. One literal substring per
+# line, matched against punused's output line; full-line `#` comments carry the
+# reason.
+#
+# sse is a LIBRARY (`github.com/cplieger/sse`) that also ships a `main` package
+# under ssetest/cmd, the controllable fixture server the TypeScript suites
+# drive. The CI gate's app-mode detection ("a main package exists") therefore
+# gates it on punused even though its exported surface is a PUBLISHED API.
+# punused resolves references through gopls `textDocument/references` inside
+# this module only ("It does not detect references from outside of your
+# project", its README's first caveat), so every API symbol whose callers live
+# in a consumer module is reported EU1002 (no reference) or EU1001 (referenced
+# only from this repo's _test.go files). Consumer evidence below was taken
+# against the two modules adopting this one (vibekit, subflux); the file and
+# call shape are the durable part, line numbers are the snapshot at
+# adjudication time.
+#
+# Hub options a consumer sets when constructing its hub. vibekit
+# internal/agent/runtime.go:348-351 passes WithKeepalive, WithKeepaliveEvent,
+# WithWriteTimeout and WithReconnectDelay; subflux internal/server/events/bus.go:88
+# passes WithMaxClients.
+function WithKeepalive
+function WithKeepaliveEvent
+function WithWriteTimeout
+function WithReconnectDelay
+function WithMaxClients
+#
+# Tuning knobs with a documented default that no consumer overrides today. Each
+# bounds a resource (ring bytes, digest body bytes, digest subject count) and is
+# refused when incoherent with its siblings at New; a consumer whose deployment
+# needs a different bound sets it, and until one does the default is the
+# contract. README "Constructing a hub" and "The digest" document all three.
+function WithReplayMaxBytes
+function WithDigestMaxSubjects
+function WithDigestMaxBody
+#
+# Hub methods a consumer calls after construction. SetMaxClients: subflux
+# internal/server/server.go:244 re-applies the cap on a config reload.
+# Snapshot is the replay ring's diagnostic read (README "Serving and
+# publishing"), the counterpart of Position for an operator dumping state.
+method (*Hub).SetMaxClients
+method (*Hub).Snapshot
+#
+# The ssetest seam consumers reuse from their own tests (README "Testing
+# against the hub"). NewRecorder: vibekit internal/git/handlers_test.go. Serve
+# and Frames are the two halves of the same seam and are exercised by this
+# module's own tests only until a consumer's suite drives a hub end to end.
+function Serve
+function NewRecorder
+method (*Recorder).Frames
+#
+# Methods reached through interface assertions rather than direct calls, which
+# gopls references cannot see. http.ResponseController discovers
+# SetWriteDeadline and SetReadDeadline on the writer it is given and unwraps a
+# wrapping writer through Unwrap (serve.go's flush discovery does the same),
+# so these three satisfy net/http's contract and are called by it.
+method (*Recorder).SetWriteDeadline
+method (*Recorder).SetReadDeadline
+method (*streamWriter).Unwrap
