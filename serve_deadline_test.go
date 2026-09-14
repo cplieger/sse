@@ -348,7 +348,7 @@ func TestServe_peerCloseEndsStream(t *testing.T) {
 
 func TestServe_resetUnwrittenOnWedgedPeer(t *testing.T) {
 	logger, logged := captureLog()
-	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(wedgeWriteTimeout), WithClientBuffer(4))
+	h := mustNew(t, WithLogger(logger), WithKeepalive(realKeepalive), WithWriteTimeout(wedgeWriteTimeout), WithClientBuffer(wedgeFrames))
 	srv := newRealServer(t, h)
 	resp, sc := openStream(t, srv, srv.URL, nil)
 	defer resp.Body.Close()
@@ -361,8 +361,19 @@ func TestServe_resetUnwrittenOnWedgedPeer(t *testing.T) {
 			t.Fatalf("Publish #%d error = %v", i+1, err)
 		}
 	}
+	waitForWedge(t, h, wedgeFrames)
+
+	// The wedged write drains nothing more, so the buffer only fills from here:
+	// one publish per free slot and one beyond it evict the client as slow while
+	// its own write is still pending against the peer.
+	overflow := wedgeFrames - h.QueuedFrames() + 1
+	for i := range overflow {
+		if _, err := h.Publish(Event{Data: payload}); err != nil {
+			t.Fatalf("overflow Publish #%d error = %v", i+1, err)
+		}
+	}
 	if got := h.ClientCount(); got != 0 {
-		t.Fatalf("ClientCount() after %d publishes into a 4-frame buffer = %d, want 0 (evicted as slow)", wedgeFrames, got)
+		t.Fatalf("ClientCount() after %d publishes past a wedged write into a %d-frame buffer = %d, want 0 (evicted as slow)", overflow, wedgeFrames, got)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
