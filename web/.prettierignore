@@ -1,0 +1,5 @@
+package-lock.json
+coverage/
+reports/
+.vitest-cache/
+src/**/*.golden.json

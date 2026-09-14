@@ -1,0 +1,71 @@
+{
+  "name": "@cplieger/sse",
+  "version": "1.0.0",
+  "description": "Server-Sent Events hub and client that resume from an exact cursor and reconcile after sleep",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cplieger/sse.git",
+    "directory": "web"
+  },
+  "homepage": "https://github.com/cplieger/sse",
+  "bugs": {
+    "url": "https://github.com/cplieger/sse/issues"
+  },
+  "author": "cplieger <917744+cplieger@users.noreply.github.com>",
+  "keywords": [
+    "sse",
+    "server-sent-events",
+    "eventsource",
+    "reconnect",
+    "resume",
+    "sharedworker",
+    "typescript"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/",
+    "!src/**/*.test.ts",
+    "!src/**/*-setup.ts",
+    "!src/**/test-helpers/**",
+    "!src/**/*.golden.json",
+    "jsr.json",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "sseFixture": "./ssetest/cmd",
+  "browserEngines": [
+    "firefox",
+    "webkit"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.tests.json",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
+    "test": "vitest --run",
+    "test:browser": "vitest --run --project browser",
+    "lint:eslint": "eslint .",
+    "lint:prettier": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.4",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@vitest/browser": "5.0.0",
+    "@vitest/browser-playwright": "5.0.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "eslint": "10.10.0",
+    "eventsource-parser": "4.1.0",
+    "fast-check": "4.9.0",
+    "playwright": "1.63.0",
+    "prettier": "3.9.6",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
+  },
+  "overrides": {
+    "qs": "^6.15.2"
+  }
+}

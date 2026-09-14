@@ -1,0 +1,112 @@
+[
+  {
+    "name": "lf",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "line one\nline two",
+    "inputHex": "6c696e65206f6e650a6c696e652074776f",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a206c696e65206f6e650a646174613a206c696e652074776f0a0a",
+    "decoded": "line one\nline two",
+    "invalidUTF8": false
+  },
+  {
+    "name": "crlf",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "line one\r\nline two",
+    "inputHex": "6c696e65206f6e650d0a6c696e652074776f",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a206c696e65206f6e650a646174613a206c696e652074776f0a0a",
+    "decoded": "line one\nline two",
+    "invalidUTF8": false
+  },
+  {
+    "name": "cr",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "line one\rline two",
+    "inputHex": "6c696e65206f6e650d6c696e652074776f",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a206c696e65206f6e650a646174613a206c696e652074776f0a0a",
+    "decoded": "line one\nline two",
+    "invalidUTF8": false
+  },
+  {
+    "name": "mixed",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "",
+    "input": "a\r\nb\rc\nd\n",
+    "inputHex": "610d0a620d630a640a",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a646174613a20610a646174613a20620a646174613a20630a646174613a20640a646174613a200a0a",
+    "decoded": "a\nb\nc\nd\n",
+    "invalidUTF8": false
+  },
+  {
+    "name": "bom",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "﻿{\"k\":1}",
+    "inputHex": "efbbbf7b226b223a317d",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a20efbbbf7b226b223a317d0a0a",
+    "decoded": "﻿{\"k\":1}",
+    "invalidUTF8": false
+  },
+  {
+    "name": "utf8-multibyte",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "héllo wörld ✓ 日本語 🎉",
+    "inputHex": "68c3a96c6c6f2077c3b6726c6420e29c9320e697a5e69cace8aa9e20f09f8e89",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a2068c3a96c6c6f2077c3b6726c6420e29c9320e697a5e69cace8aa9e20f09f8e890a0a",
+    "decoded": "héllo wörld ✓ 日本語 🎉",
+    "invalidUTF8": false
+  },
+  {
+    "name": "empty-data",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "",
+    "inputHex": "",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a6576656e743a206e6f746966790a646174613a200a0a",
+    "decoded": "",
+    "invalidUTF8": false
+  },
+  {
+    "name": "idless",
+    "id": "",
+    "event": "",
+    "input": "{\"x\":1}",
+    "inputHex": "7b2278223a317d",
+    "encodedHex": "646174613a207b2278223a317d0a0a",
+    "decoded": "{\"x\":1}",
+    "invalidUTF8": false
+  },
+  {
+    "name": "colon-in-data",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "",
+    "input": "key: value: more",
+    "inputHex": "6b65793a2076616c75653a206d6f7265",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a646174613a206b65793a2076616c75653a206d6f72650a0a",
+    "decoded": "key: value: more",
+    "invalidUTF8": false
+  },
+  {
+    "name": "leading-space",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "",
+    "input": "  indented\n\ttabbed",
+    "inputHex": "2020696e64656e7465640a09746162626564",
+    "encodedHex": "69643a20336639613163306537623264346135383a31320a646174613a202020696e64656e7465640a646174613a20097461626265640a0a",
+    "decoded": "  indented\n\ttabbed",
+    "invalidUTF8": false
+  },
+  {
+    "name": "invalid-utf8",
+    "id": "3f9a1c0e7b2d4a58:12",
+    "event": "notify",
+    "input": "ok�bad",
+    "inputHex": "6f6bff626164",
+    "encodedHex": "",
+    "decoded": "",
+    "invalidUTF8": true
+  }
+]

@@ -1,0 +1,34 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Kiro skill artifacts (app-review, judgement, steering-maintenance)
+**/.app-review/
+**/.judgement/
+**/.steering-maintenance/
+
+# TypeScript half
+web/node_modules/
+web/coverage/
+web/.stryker-tmp/
+web/reports/
+# `inPlace: true` runs Stryker in the real tree (see web/stryker.config.json),
+# so the vitest-runner writes its per-worker setup files here instead of into
+# the sandbox, and nothing removes them afterwards.
+web/stryker-setup-*.js
+
+# Local tool caches (never committed)
+.gocache/

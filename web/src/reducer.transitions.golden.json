@@ -1,0 +1,1825 @@
+[
+  {
+    "state": "stopped",
+    "event": "start:visible-online",
+    "next": "connecting",
+    "effects": [
+      "connect"
+    ]
+  },
+  {
+    "state": "stopped",
+    "event": "start:hidden",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "start:offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stop",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "reconnect",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connected",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connected:fresh",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connected:stale",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connect_failed",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connect_failed:wire",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "connect_failed:stale",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "byte",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "byte:stale",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stream_ended:short",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stream_ended:stable",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stream_ended:shutdown-stable",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stream_ended:stale",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "watchdog_fired",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "hidden_timer_fired",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "backoff_elapsed",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "stable_elapsed",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "visible:fresh",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "visible:silent",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "hidden",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "online",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "offline",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "pagehide",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "pageshow:fresh",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "stopped",
+    "event": "pageshow:silent",
+    "next": "stopped",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "start:visible-online",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "start:hidden",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "start:offline",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "reconnect",
+    "next": "connecting",
+    "effects": [
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "connected",
+    "next": "open",
+    "effects": [
+      "arm:watchdog",
+      "arm:stable",
+      "emit:hello"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "connected:fresh",
+    "next": "open",
+    "effects": [
+      "arm:watchdog",
+      "arm:stable",
+      "emit:hello",
+      "revalidate:hello"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "connected:stale",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "connect_failed",
+    "next": "backoff",
+    "effects": [
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "connect_failed:wire",
+    "next": "backoff",
+    "effects": [
+      "emit:wire_unsupported",
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "connect_failed:stale",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "byte",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "byte:stale",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "stream_ended:short",
+    "next": "backoff",
+    "effects": [
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "stream_ended:stable",
+    "next": "backoff",
+    "effects": [
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "stream_ended:shutdown-stable",
+    "next": "backoff",
+    "effects": [
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "stream_ended:stale",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "watchdog_fired",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "hidden_timer_fired",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "backoff_elapsed",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "stable_elapsed",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "visible:fresh",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "visible:silent",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "hidden",
+    "next": "hidden_closed",
+    "effects": [
+      "abort"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "online",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "offline",
+    "next": "offline",
+    "effects": [
+      "abort"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": [
+      "abort"
+    ]
+  },
+  {
+    "state": "connecting",
+    "event": "pageshow:fresh",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "connecting",
+    "event": "pageshow:silent",
+    "next": "connecting",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "start:visible-online",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "start:hidden",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "start:offline",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "reconnect",
+    "next": "connecting",
+    "effects": [
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "connected",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "connected:fresh",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "connected:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "connect_failed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "connect_failed:wire",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "connect_failed:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "byte",
+    "next": "open",
+    "effects": [
+      "arm:watchdog"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "byte:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "stream_ended:short",
+    "next": "backoff",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort",
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "stream_ended:stable",
+    "next": "connecting",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "connect"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "stream_ended:shutdown-stable",
+    "next": "backoff",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort",
+      "arm:backoff"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "stream_ended:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "watchdog_fired",
+    "next": "connecting",
+    "effects": [
+      "emit:watchdog",
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "hidden_timer_fired",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "backoff_elapsed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "stable_elapsed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "visible:fresh",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "visible:silent",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "hidden",
+    "next": "open",
+    "effects": [
+      "disarm:watchdog",
+      "arm:hidden"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "online",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:visible",
+    "event": "offline",
+    "next": "offline",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "pageshow:fresh",
+    "next": "open",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "open:visible",
+    "event": "pageshow:silent",
+    "next": "open",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "start:visible-online",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "start:hidden",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "start:offline",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "reconnect",
+    "next": "connecting",
+    "effects": [
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "connected",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "connected:fresh",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "connected:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "connect_failed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "connect_failed:wire",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "connect_failed:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "byte",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "byte:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "stream_ended:short",
+    "next": "hidden_closed",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "stream_ended:stable",
+    "next": "hidden_closed",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "stream_ended:shutdown-stable",
+    "next": "hidden_closed",
+    "effects": [
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "stream_ended:stale",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "watchdog_fired",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "hidden_timer_fired",
+    "next": "hidden_closed",
+    "effects": [
+      "abort",
+      "disarm:stable",
+      "disarm:hidden"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "backoff_elapsed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "stable_elapsed",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "visible:fresh",
+    "next": "open",
+    "effects": [
+      "disarm:hidden",
+      "revalidate:visible",
+      "arm:watchdog"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "visible:silent",
+    "next": "connecting",
+    "effects": [
+      "disarm:hidden",
+      "revalidate:visible",
+      "emit:watchdog",
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "hidden",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "online",
+    "next": "open",
+    "effects": []
+  },
+  {
+    "state": "open:hidden",
+    "event": "offline",
+    "next": "offline",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "pageshow:fresh",
+    "next": "open",
+    "effects": [
+      "disarm:hidden",
+      "revalidate:pageshow",
+      "arm:watchdog"
+    ]
+  },
+  {
+    "state": "open:hidden",
+    "event": "pageshow:silent",
+    "next": "connecting",
+    "effects": [
+      "disarm:hidden",
+      "revalidate:pageshow",
+      "emit:watchdog",
+      "disarm:watchdog",
+      "disarm:stable",
+      "disarm:hidden",
+      "abort",
+      "connect"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "start:visible-online",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "start:hidden",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "start:offline",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "reconnect",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "connected",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "connected:fresh",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "connected:stale",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "connect_failed",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "connect_failed:wire",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "connect_failed:stale",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "byte",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "byte:stale",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "stream_ended:short",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "stream_ended:stable",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "stream_ended:shutdown-stable",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "stream_ended:stale",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "watchdog_fired",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "hidden_timer_fired",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "backoff_elapsed",
+    "next": "connecting",
+    "effects": [
+      "connect"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "stable_elapsed",
+    "next": "backoff",
+    "effects": []
+  },
+  {
+    "state": "backoff",
+    "event": "visible:fresh",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect",
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "visible:silent",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect",
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "hidden",
+    "next": "hidden_closed",
+    "effects": [
+      "disarm:backoff"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "online",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect",
+      "revalidate:online"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "offline",
+    "next": "offline",
+    "effects": [
+      "disarm:backoff"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": [
+      "disarm:backoff"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "pageshow:fresh",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect",
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "backoff",
+    "event": "pageshow:silent",
+    "next": "connecting",
+    "effects": [
+      "disarm:backoff",
+      "connect",
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "start:visible-online",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "start:hidden",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "start:offline",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "reconnect",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connected",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connected:fresh",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connected:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connect_failed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connect_failed:wire",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "connect_failed:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "byte",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "byte:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stream_ended:short",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stream_ended:stable",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stream_ended:shutdown-stable",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stream_ended:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "watchdog_fired",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "hidden_timer_fired",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "backoff_elapsed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "stable_elapsed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "visible:fresh",
+    "next": "connecting",
+    "effects": [
+      "connect",
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "visible:silent",
+    "next": "connecting",
+    "effects": [
+      "connect",
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "hidden",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "online",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "pageshow:fresh",
+    "next": "connecting",
+    "effects": [
+      "connect",
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "hidden_closed:online",
+    "event": "pageshow:silent",
+    "next": "connecting",
+    "effects": [
+      "connect",
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "start:visible-online",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "start:hidden",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "start:offline",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "reconnect",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connected",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connected:fresh",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connected:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connect_failed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connect_failed:wire",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "connect_failed:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "byte",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "byte:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stream_ended:short",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stream_ended:stable",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stream_ended:shutdown-stable",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stream_ended:stale",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "watchdog_fired",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "hidden_timer_fired",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "backoff_elapsed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "stable_elapsed",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "visible:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "visible:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "hidden",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "online",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "pagehide",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "pageshow:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "hidden_closed:offline",
+    "event": "pageshow:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "start:visible-online",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "start:hidden",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "start:offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "reconnect",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connected",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connected:fresh",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connected:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connect_failed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connect_failed:wire",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "connect_failed:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "byte",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "byte:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stream_ended:short",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stream_ended:stable",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stream_ended:shutdown-stable",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stream_ended:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "watchdog_fired",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "hidden_timer_fired",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "backoff_elapsed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "stable_elapsed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "visible:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "visible:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "hidden",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "online",
+    "next": "connecting",
+    "effects": [
+      "connect",
+      "revalidate:online"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "pagehide",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:visible",
+    "event": "pageshow:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "offline:visible",
+    "event": "pageshow:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "offline:hidden",
+    "event": "start:visible-online",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "start:hidden",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "start:offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stop",
+    "next": "stopped",
+    "effects": [
+      "abort",
+      "disarm:watchdog",
+      "disarm:hidden",
+      "disarm:backoff",
+      "disarm:stable"
+    ]
+  },
+  {
+    "state": "offline:hidden",
+    "event": "reconnect",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connected",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connected:fresh",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connected:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connect_failed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connect_failed:wire",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "connect_failed:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "byte",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "byte:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stream_ended:short",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stream_ended:stable",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stream_ended:shutdown-stable",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stream_ended:stale",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "watchdog_fired",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "hidden_timer_fired",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "backoff_elapsed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "stable_elapsed",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "visible:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "offline:hidden",
+    "event": "visible:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:visible"
+    ]
+  },
+  {
+    "state": "offline:hidden",
+    "event": "hidden",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "online",
+    "next": "hidden_closed",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "offline",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "pagehide",
+    "next": "offline",
+    "effects": []
+  },
+  {
+    "state": "offline:hidden",
+    "event": "pageshow:fresh",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  },
+  {
+    "state": "offline:hidden",
+    "event": "pageshow:silent",
+    "next": "offline",
+    "effects": [
+      "revalidate:pageshow"
+    ]
+  }
+]
