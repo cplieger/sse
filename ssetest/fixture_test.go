@@ -93,14 +93,16 @@ func restStatus(t *testing.T, url string) int {
 }
 
 // openEvents connects to /events and consumes the retry field and the hello.
-// The caller closes the returned body.
-func openEvents(t *testing.T, base string, header http.Header) (*http.Response, sse.Hello) {
+// It returns the reader that consumed them so the caller reads the rest of the
+// same stream through it; the caller closes the returned body.
+func openEvents(t *testing.T, base string, header http.Header) (*http.Response, *FrameReader, sse.Hello) {
 	t.Helper()
 	resp := get(t, base+"/events", header)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /events = %d, want 200", resp.StatusCode)
 	}
-	frames, err := ReadFrames(resp.Body, 2)
+	stream := NewFrameReader(resp.Body)
+	frames, err := stream.Read(2)
 	if err != nil {
 		t.Fatalf("reading the handshake: %v (frames %+v)", err, frames)
 	}
@@ -111,7 +113,7 @@ func openEvents(t *testing.T, base string, header http.Header) (*http.Response, 
 	if err := json.Unmarshal([]byte(frames[1].Data), &hello); err != nil {
 		t.Fatalf("hello %q: %v", frames[1].Data, err)
 	}
-	return resp, hello
+	return resp, stream, hello
 }
 
 func pollUntil(t *testing.T, what string, cond func() bool) {
@@ -133,12 +135,12 @@ type frameFeed struct {
 	err    chan error
 }
 
-func feedFrames(r io.Reader) *frameFeed {
+func feedFrames(stream *FrameReader) *frameFeed {
 	f := &frameFeed{frames: make(chan Frame), err: make(chan error, 1)}
 	go func() {
 		defer close(f.frames)
 		for {
-			frames, err := ReadFrames(r, 1)
+			frames, err := stream.Read(1)
 			if err != nil {
 				f.err <- err
 				return
@@ -190,12 +192,12 @@ func TestFixture_controlRoutes(t *testing.T) {
 
 	t.Run("stall", func(t *testing.T) {
 		_, base := fixtureServer(t)
-		resp, _ := openEvents(t, base, nil)
+		resp, stream, _ := openEvents(t, base, nil)
 		defer resp.Body.Close()
-		if _, err := ReadFrames(resp.Body, 1); err != nil {
+		if _, err := stream.Read(1); err != nil {
 			t.Fatalf("reading the connected frame: %v", err)
 		}
-		feed := feedFrames(resp.Body)
+		feed := feedFrames(stream)
 		control(t, base, "stall", `{"on":true}`)
 		control(t, base, "publish", `{"data":"hidden"}`)
 		if fr, err := feed.next(300 * time.Millisecond); !errors.Is(err, context.DeadlineExceeded) {
@@ -217,7 +219,7 @@ func TestFixture_controlRoutes(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d, want 200 (headers leave even under a stall)", resp.StatusCode)
 		}
-		feed := feedFrames(resp.Body)
+		feed := feedFrames(NewFrameReader(resp.Body))
 		if fr, err := feed.next(pollTimeout); err != nil || fr.Event != "retry" {
 			t.Fatalf("first frame = %+v (%v), want the retry field to pass", fr, err)
 		}
@@ -228,14 +230,14 @@ func TestFixture_controlRoutes(t *testing.T) {
 
 	t.Run("restart", func(t *testing.T) {
 		_, base := fixtureServer(t)
-		resp, hello := openEvents(t, base, nil)
+		resp, stream, hello := openEvents(t, base, nil)
 		defer resp.Body.Close()
 		var restarted restartResponse
 		post(t, base+"/control/restart", ``, nil, &restarted)
 		if restarted.Epoch == "" || restarted.Epoch == hello.Epoch {
 			t.Errorf("restart epoch = %q, want a new epoch (old %q)", restarted.Epoch, hello.Epoch)
 		}
-		frames, err := ReadFrames(resp.Body, 2)
+		frames, err := stream.Read(2)
 		if err != nil || frames[1].Event != "sse:reset" || frames[1].Data != `{"reason":"shutdown"}` {
 			t.Errorf("old stream after restart = %+v (%v), want the connected frame then sse:reset shutdown", frames, err)
 		}
@@ -248,7 +250,7 @@ func TestFixture_controlRoutes(t *testing.T) {
 		_, base := fixtureServer(t)
 		control(t, base, "delay-hello", `{"ms":300}`)
 		start := time.Now()
-		resp, _ := openEvents(t, base, nil)
+		resp, _, _ := openEvents(t, base, nil)
 		defer resp.Body.Close()
 		if elapsed := time.Since(start); elapsed < 300*time.Millisecond {
 			t.Errorf("hello arrived after %v, want at least 300ms", elapsed)
@@ -272,10 +274,10 @@ func TestFixture_controlRoutes(t *testing.T) {
 		_, base := fixtureServer(t)
 		control(t, base, "hook-sleep", `{"ms":200}`)
 		start := time.Now()
-		resp, _ := openEvents(t, base, nil)
+		resp, stream, _ := openEvents(t, base, nil)
 		defer resp.Body.Close()
 		helloAt := time.Since(start)
-		frames, err := ReadFrames(resp.Body, 1)
+		frames, err := stream.Read(1)
 		if err != nil || frames[0].Data != `{"type":"connected"}` || frames[0].ID != "" {
 			t.Fatalf("hook frame = %+v (%v), want the id-less connected frame", frames, err)
 		}
@@ -283,9 +285,9 @@ func TestFixture_controlRoutes(t *testing.T) {
 			t.Errorf("connected frame arrived %v after the hello, want about 200ms (the hello is not delayed by the hook)", connectedAt-helloAt)
 		}
 		control(t, base, "hook-sleep", `{"ms":0,"fail":true}`)
-		failing, _ := openEvents(t, base, nil)
+		failing, failingStream, _ := openEvents(t, base, nil)
 		defer failing.Body.Close()
-		if frames, err := ReadFrames(failing.Body, 1); !errors.Is(err, io.ErrUnexpectedEOF) {
+		if frames, err := failingStream.Read(1); !errors.Is(err, io.ErrUnexpectedEOF) {
 			t.Errorf("stream with a failing hook = %+v (%v), want EOF right after the hello", frames, err)
 		}
 	})
@@ -344,11 +346,11 @@ func TestFixture_controlRoutes(t *testing.T) {
 	t.Run("close-after", func(t *testing.T) {
 		f, base := fixtureServer(t)
 		control(t, base, "close-after", `{"frames":3}`)
-		resp, _ := openEvents(t, base, nil)
+		resp, stream, _ := openEvents(t, base, nil)
 		defer resp.Body.Close()
 		control(t, base, "publish", `{"data":"third"}`)
 		control(t, base, "publish", `{"data":"never sent"}`)
-		frames, err := ReadFrames(resp.Body, 0)
+		frames, err := stream.Read(0)
 		if !errors.Is(err, io.ErrUnexpectedEOF) {
 			t.Fatalf("ReadFrames to the hard close = %v, want io.ErrUnexpectedEOF (the connection was closed mid-response)", err)
 		}
@@ -364,11 +366,11 @@ func TestFixture_controlRoutes(t *testing.T) {
 
 	t.Run("state counts wire declarations", func(t *testing.T) {
 		_, base := fixtureServer(t)
-		v3, _ := openEvents(t, base, http.Header{"SSE-Wire": {"1"}})
+		v3, _, _ := openEvents(t, base, http.Header{"SSE-Wire": {"1"}})
 		defer v3.Body.Close()
-		legacy, _ := openEvents(t, base, nil)
+		legacy, _, _ := openEvents(t, base, nil)
 		defer legacy.Body.Close()
-		tagged, _ := openEvents(t, base, http.Header{"SSE-Wire": {"anything"}, "SSE-Client": {"tab-a"}})
+		tagged, _, _ := openEvents(t, base, http.Header{"SSE-Wire": {"anything"}, "SSE-Client": {"tab-a"}})
 		defer tagged.Body.Close()
 		st := state(t, base)
 		if st.V3Connects != 2 || st.LegacyConnects != 1 || st.Clients != 3 {
@@ -407,7 +409,7 @@ func TestFixture_aliveRouteGrammar(t *testing.T) {
 func TestFixture_presenceGoneAtAliveWindow(t *testing.T) {
 	_, base := fixtureServer(t)
 	control(t, base, "alive-window", `{"ms":200}`)
-	resp, _ := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
+	resp, _, _ := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
 	defer resp.Body.Close()
 	st := state(t, base)
 	if len(st.Presence) != 1 || st.Presence[0].Gone || st.Presence[0].Connected != 1 || st.Transitions.Alive != 1 {
@@ -448,7 +450,7 @@ func TestFixture_restartMintsNewEpoch(t *testing.T) {
 	f, base := fixtureServer(t)
 	control(t, base, "publish", `{"data":"before"}`)
 	first := state(t, base).Position
-	resp, hello := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
+	resp, stream, hello := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
 	defer resp.Body.Close()
 	if hello.Epoch != first.Epoch {
 		t.Fatalf("hello epoch = %q, want %q", hello.Epoch, first.Epoch)
@@ -458,10 +460,10 @@ func TestFixture_restartMintsNewEpoch(t *testing.T) {
 	if restarted.Epoch == first.Epoch || len(restarted.Epoch) != 16 {
 		t.Errorf("restart epoch = %q, want a new 16-hex epoch (old %q)", restarted.Epoch, first.Epoch)
 	}
-	if _, err := ReadFrames(resp.Body, 2); err != nil {
+	if _, err := stream.Read(2); err != nil {
 		t.Fatalf("old stream: %v", err)
 	}
-	if _, err := ReadFrames(resp.Body, 1); !errors.Is(err, io.ErrUnexpectedEOF) {
+	if _, err := stream.Read(1); !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Errorf("old stream after its reset = %v, want EOF", err)
 	}
 	pollUntil(t, "the old stream to report its shutdown", func() bool {
@@ -471,7 +473,7 @@ func TestFixture_restartMintsNewEpoch(t *testing.T) {
 	if f.Hub().Position().Epoch != restarted.Epoch {
 		t.Errorf("Hub() epoch = %q, want the restarted %q", f.Hub().Position().Epoch, restarted.Epoch)
 	}
-	reconnected, again := openEvents(t, base, http.Header{"Last-Event-ID": {first.Epoch + ":1"}})
+	reconnected, _, again := openEvents(t, base, http.Header{"Last-Event-ID": {first.Epoch + ":1"}})
 	defer reconnected.Body.Close()
 	if again.Epoch != restarted.Epoch || again.Verdict != sse.VerdictEpochChanged {
 		t.Errorf("hello after restart = %+v, want the new epoch with verdict epoch_changed", again)

@@ -123,7 +123,7 @@ Every verdict other than `resumed` yields `Resumed: false` and no replay; the cl
 
 ### Testing against the hub
 
-`github.com/cplieger/sse/ssetest` is the test seam consumers reuse: `Serve(t, hub, opts...)` starts an `httptest` server for a hub and returns its URL, `ReadFrames(r, n)` parses dispatched frames off the wire, `Recorder` is a `ResponseRecorder` that flushes but answers `http.ErrNotSupported` to the deadline setters, and `Fixture` is the controllable server (publish, stall, restart, delay, mutate) the TypeScript suites drive through the `ssetest/cmd` binary.
+`github.com/cplieger/sse/ssetest` is the test seam consumers reuse: `Serve(t, hub, opts...)` starts an `httptest` server for a hub and returns its URL, `ReadFrames(r, n)` parses dispatched frames off the wire in one call, `FrameReader` reads successive batches off one live stream through a single buffered reader, `Recorder` is a `ResponseRecorder` that flushes but answers `http.ErrNotSupported` to the deadline setters, and `Fixture` is the controllable server (publish, stall, restart, delay, mutate) the TypeScript suites drive through the `ssetest/cmd` binary.
 
 ### The TypeScript client
 

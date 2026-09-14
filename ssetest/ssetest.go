@@ -47,27 +47,53 @@ type Frame struct {
 // the first n dispatched frames, or every frame up to EOF when n <= 0. Comment
 // lines are skipped, and a blank line that closes no data or retry field
 // dispatches nothing, exactly as a browser's parser behaves.
+//
+// This is the one-shot form: the buffered reader is discarded on return, and
+// with it any bytes it read past frame n. Read successive batches off one live
+// stream through a FrameReader instead.
 func ReadFrames(r io.Reader, n int) ([]Frame, error) {
+	return NewFrameReader(r).Read(n)
+}
+
+// FrameReader parses dispatched frames off one event stream across successive
+// reads. It owns the buffered reader for the whole stream, which is what makes
+// the second read correct: a buffered reader fills in chunks, so the bytes of
+// frame n+1 routinely arrive in the same read as frame n, and a reader created
+// per call would discard them along with itself. Not safe for concurrent use.
+type FrameReader struct {
+	sc *bufio.Scanner
+	b  frameBuilder
+}
+
+// NewFrameReader returns a FrameReader over r, buffered for the hub's largest
+// frame.
+func NewFrameReader(r io.Reader) *FrameReader {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 2*sse.MaxFrameBytes)
+	return &FrameReader{sc: sc}
+}
+
+// Read returns the next n dispatched frames, or every remaining frame up to
+// EOF when n <= 0, and reports io.ErrUnexpectedEOF when the stream ended before
+// n frames dispatched.
+func (fr *FrameReader) Read(n int) ([]Frame, error) {
 	var frames []Frame
-	var b frameBuilder
-	for sc.Scan() {
-		line := sc.Text()
+	for fr.sc.Scan() {
+		line := fr.sc.Text()
 		switch {
 		case line == "":
-			if fr, ok := b.dispatch(); ok {
-				frames = append(frames, fr)
+			if f, ok := fr.b.dispatch(); ok {
+				frames = append(frames, f)
 			}
 			if n > 0 && len(frames) >= n {
 				return frames, nil
 			}
 		case strings.HasPrefix(line, ":"):
 		default:
-			b.field(line)
+			fr.b.field(line)
 		}
 	}
-	if err := sc.Err(); err != nil {
+	if err := fr.sc.Err(); err != nil {
 		return frames, err
 	}
 	if n > 0 && len(frames) < n {
