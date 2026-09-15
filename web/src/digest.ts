@@ -10,20 +10,51 @@ export interface Removed extends Subject {
   readonly reason: "gone" | "forbidden";
 }
 
+/**
+ * The answer to one check, always positioned at the epoch and head the server held when it
+ * answered. `must_refetch` means no comparison happened and the application must refetch rather
+ * than apply a diff: the presented epoch was absent or not the server's, its resolver failed, or
+ * the answer did not match the batch that was asked about. `ok` names the subjects whose version
+ * moved and the ones the server no longer answers for; a subject in neither list is unchanged.
+ */
 export type DigestResult =
   | { kind: "must_refetch"; epoch: string; head: string }
   | { kind: "ok"; epoch: string; head: string; changed: State[]; removed: Removed[] };
 
+/**
+ * What one check asks about: the epoch the held versions were minted under, and the versions
+ * themselves. `VersionMap.snapshot()` produces one directly. A null epoch presents none, which the
+ * server answers with must_refetch for any non-empty snapshot, so an unbound map is worth checking
+ * only when it is also empty.
+ */
 export interface DigestSnapshot {
   readonly epoch: string | null;
   readonly held: readonly Held[];
 }
 
+/**
+ * The client of the digest route, and nothing more: it reads no version map and writes to none, so
+ * applying its answer is the caller's step. `check` splits the snapshot into POSTs of at most
+ * `maxSubjects` and stops at the first must_refetch, since a refusal makes every remaining batch
+ * moot. It rejects with DigestStatusError on any status but 200, with a TimeoutError DOMException
+ * when a POST's request phase outlives `timeoutMs`, and with a plain Error when a 200 body is not
+ * a positioned digest answer.
+ */
 export interface DigestClient {
   /** Asks the server which held versions moved; the optional signal cancels every POST. */
   check(snapshot: DigestSnapshot, signal?: AbortSignal): Promise<DigestResult>;
 }
 
+/**
+ * How the client reaches the route. `url` is POSTed with `credentials: "same-origin"`; `fetch`
+ * defaults to globalThis.fetch and is where a consumer merges its own credentials or bearer
+ * header; `headers` is merged first, so it cannot displace the Accept and Content-Type the route
+ * requires. `timeoutMs` defaults to digestTimeoutMs and bounds one POST's request and the wait for
+ * its response headers, not the whole check and not the body read: it is released as soon as the
+ * response object arrives, so the body read is bounded only by the signal passed to `check`, and
+ * by nothing at all when that argument is omitted.
+ * `maxSubjects` defaults to DIGEST_MAX_SUBJECTS, the cap the server enforces at its own default.
+ */
 export interface DigestClientOptions {
   readonly url: string;
   readonly fetch?: typeof fetch;

@@ -2,8 +2,21 @@ import type { ClientState, ConnectFailure } from "./reducer.js";
 import type { Subject } from "./versions.js";
 import type { ResetReason } from "./wire.js";
 
+/**
+ * Why a revalidation was scheduled. The first three are the platform waking the client up; `hello`
+ * is every run the runtime demands for itself — a hello that did not resume, a version map the
+ * hello cleared, a frame the application threw on, and the connect after a run that failed. A
+ * `hello` run never coalesces with a neighbouring one, and neither does anything arriving while
+ * one is in flight.
+ */
 export type RevalidateCause = "visible" | "pageshow" | "online" | "hello";
 
+/**
+ * Why frames held for a run were dropped instead of delivered: the attempt was aborted, the stream
+ * ended under it, the run passed revalidateTimeoutMs, the hold passed its frame or byte bound, or
+ * the run rejected. A held frame never advanced the cursor, so the next connect asks for the
+ * discarded ones again.
+ */
 export type HeldDiscardCause =
   "abort" | "stream_ended" | "hold_timeout" | "hold_overflow" | "revalidate_failed";
 

@@ -20,6 +20,13 @@ import {
 } from "./visibility.js";
 import { type Cursor, type Hello, compareOffset } from "./wire.js";
 
+/**
+ * How one stream is built. Four fields are required — `url`, `versions`, `onFrame` and
+ * `revalidate` — and the rest have defaults that make a plain browser tab work unconfigured: the
+ * timing is filled from DEFAULT_TIMING, both wire bounds are this package's WIRE, and the
+ * visibility and network readings are the DOM sources, taken lazily at start(). A consumer replaces
+ * those two for a worker, a test, or a host folding several tabs into one connection.
+ */
 export interface StreamOptions {
   readonly url: string;
   /** Defaults to globalThis.fetch; the place to merge `credentials: "include"` or a bearer header. */
@@ -42,12 +49,26 @@ export interface StreamOptions {
   readonly revalidate: (ctx: RevalidateContext) => Promise<void>;
 }
 
+/**
+ * One application frame, as `onFrame` receives it: the event name, the data payload exactly as it
+ * arrived, and the frame's position when it carried one. Library frames are never delivered here,
+ * `id` is null for a frame the server published without one, and a frame whose id is not a valid
+ * `epoch:offset` is reported as `bad_cursor` and dropped instead. Delivering a frame advances the
+ * cursor past it whether or not the handler threw: a throw earns a revalidation, never a redelivery.
+ */
 export interface Frame {
   readonly type: string;
   readonly data: string;
   readonly id: Cursor | null;
 }
 
+/**
+ * The context of one reconciliation run. Runs are single-flight, so a body is never entered while
+ * another is in flight, and at most one more run is ever queued behind the current one. Every fetch
+ * the body makes must take `signal`: the runtime aborts it at revalidateTimeoutMs and ends the
+ * connection rather than waiting, and a body that ignores the signal keeps running against state
+ * the runtime has already given up on.
+ */
 export interface RevalidateContext {
   readonly cause: RevalidateCause;
   /** The version map's epoch when the run started. */
@@ -59,6 +80,13 @@ export interface RevalidateContext {
   readonly signal: AbortSignal;
 }
 
+/**
+ * The runtime's handle. Frames and records do not arrive through it — they go to the `onFrame` and
+ * `onLifecycle` of the options the stream was created with — so what is left here is the four verbs
+ * and the two readings. `start()` is ignored unless the stream is stopped, and `cursor()` is the
+ * position the next connect will present as `Last-Event-ID`, or null when it will ask for a fresh
+ * hello instead.
+ */
 export interface Stream {
   start(): void;
   /** For leaving the page: aborts the in-flight revalidate's signal. */

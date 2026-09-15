@@ -35,6 +35,15 @@ export interface TabFallback {
   readonly headers: Record<string, string>;
 }
 
+/**
+ * How this tab attaches. `spawn` is called for every attempt at the worker — the first one, each respawn
+ * after a silent window, the re-spawn on `pageshow` when the page came back with no live port, and each
+ * recovery probe from fallback mode — so it must build a fresh worker each time rather than return a
+ * held one; a throw from it is read as the worker being unavailable. `fallback` is called when the
+ * ladder gives up, and immediately where `SharedWorker` is absent. `revalidate` is optional, and a tab
+ * without one reports every routed run as done, which is correct only when the host's own body did the
+ * reconciliation.
+ */
 export interface AttachOptions {
   /** Constructs the worker with the fixed URL, name and options; called on every spawn. */
   readonly spawn: () => SharedWorkerLike;
@@ -55,6 +64,13 @@ export interface AttachOptions {
   readonly revalidateTimeoutMs?: number;
 }
 
+/**
+ * This tab's handle on the profile's stream. Every verb works the same in both modes, which is the point
+ * of it: `mode()` reports whether they currently reach the worker host over a port or this tab's own
+ * fallback stream, and a consumer needs it for reporting rather than for branching. `state()` is the
+ * host's last broadcast in worker mode, so it reads null until the first one arrives, and the fallback
+ * stream's own state otherwise.
+ */
 export interface TabAttachment {
   /** Leaves the host; `logout` also ends the profile's stream, or this tab's fallback stream. */
   detach(cause?: "unload" | "logout"): void;

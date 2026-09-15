@@ -29,6 +29,12 @@ export interface VersionMap {
   snapshot(): { epoch: string | null; held: Held[] };
 }
 
+/**
+ * The map's one hook. A stamp from a foreign epoch is not an error the application has to handle:
+ * observe() ignores it and answers false, and this is how the application learns it happened.
+ * staleListener reports the same events, which is the path the runtime uses for its `stale_stamp`
+ * records, so a consumer that wants both gets both.
+ */
 export interface VersionMapOptions {
   /** Called for every stamp ignored because its epoch differs from the bound epoch. */
   readonly onStale?: (subject: Subject, epoch: string) => void;

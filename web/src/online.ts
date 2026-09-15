@@ -1,8 +1,19 @@
+/**
+ * The network reading, injected rather than assumed. A true is only ever a reason to try — no
+ * platform can promise a route — while a false is taken at its word and holds the client off the
+ * network, so a source that guesses false is the expensive mistake. `listen` returns the unsubscribe.
+ */
 export interface OnlineSource {
   online(): boolean;
   listen(cb: (online: boolean) => void): () => void;
 }
 
+/**
+ * One network reading shared by every subscriber, listening to the source only while at least one
+ * subscriber is attached. createWorkerHost does not read the DOM source through this: it folds the
+ * readings its tabs forward, because createDOMOnlineSource registers nothing where there is no
+ * `window` to hear `online` and `offline` on.
+ */
 export interface OnlineManager {
   isOnline(): boolean;
   /** The source is listened to from the first subscriber to the last. */

@@ -33,6 +33,13 @@ export type ClientState =
   | { kind: "offline"; generation: number; attempt: number; visible: boolean }
   | { kind: "hidden_closed"; generation: number; attempt: number; online: boolean };
 
+/**
+ * Why a stream ended. `eof`, `error` and the two `reset:` reasons are read off the wire; the rest
+ * are the client's own decisions — silence past the watchdog interval, a frame over the buffer
+ * cap, and the three ways a hold ends without delivering. An attempt still connecting reports one
+ * of these too, and the reducer reads every one of them as a `network` connect failure there. All
+ * of them take one transition and none discards the cursor, so the next attempt resumes from it.
+ */
 export type StreamEnd =
   | "eof"
   | "error"
@@ -44,6 +51,14 @@ export type StreamEnd =
   | "hold_overflow"
   | "revalidate_failed";
 
+/**
+ * Why an attempt never became an open stream: either of the two connect-phase deadlines, a
+ * rejected fetch, a status other than 200, a media type other than `text/event-stream`, or one
+ * of the two hello refusals. Each is reported as a `connect_failed` record, and the attempt then
+ * backs off — or waits in `offline` instead, when the network reading has already gone false.
+ * `wire_unsupported` carries the revision the server announced and emits its own record beside
+ * the shared one.
+ */
 export type ConnectFailure =
   | { kind: "timeout_headers" }
   | { kind: "timeout_hello" }
@@ -58,6 +73,14 @@ interface FromTransport {
   readonly generation: number;
 }
 
+/**
+ * Every input the reducer accepts: the caller's three verbs, one connection attempt's reports, the
+ * four timer expiries, and the platform's visibility and network events. The caller supplies what
+ * the reducer refuses to read for itself — `now` from its clock, `rand` drawn in [0, 1) for the
+ * backoff, and `retryMs`, the reconnection delay in force, which floors the backoff after a stream
+ * that was open ends. A report tagged with a generation other than the current one is ignored,
+ * which is how a late answer from a replaced attempt is dropped rather than acted on.
+ */
 export type ClientEvent =
   | { type: "start"; now: number; visible: boolean; online: boolean }
   | { type: "stop" }
@@ -83,6 +106,12 @@ export type ClientEvent =
   | { type: "pagehide"; now: number }
   | { type: "pageshow"; now: number; rand: number; retryMs: number };
 
+/**
+ * The four timers the reducer arms and disarms by name, never by handle: byte silence, the
+ * hidden-tab close, the backoff delay, and the connected time after which the attempt counter
+ * resets. The runtime owns the handles and dispatches the matching expiry event; arming one that
+ * is already armed replaces it.
+ */
 export type Timer = "watchdog" | "hidden" | "backoff" | "stable";
 
 /**
@@ -98,6 +127,11 @@ export type Effect =
   | { kind: "revalidate"; cause: RevalidateCause }
   | { kind: "emit"; event: LifecycleEvent };
 
+/**
+ * One transition's result: the state to hold from now on, and the effects to execute in the order
+ * given. The reducer performs none of them, so a caller that drops `effects` has a state machine
+ * that transitions and a client that does nothing.
+ */
 export interface Reduction {
   readonly state: ClientState;
   readonly effects: Effect[];

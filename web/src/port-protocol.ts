@@ -6,6 +6,12 @@ import type { Subject } from "./versions.js";
 import type { VisibilityInput } from "./visibility.js";
 import type { Cursor } from "./wire.js";
 
+/**
+ * Why a tab is leaving the host. `unload` and `logout` are the application's, through
+ * `TabAttachment.detach`; `respawn` and `fallback` are the tab's own ladder giving up on a worker that
+ * stopped answering. Only `logout` stops the profile's stream — the other three leave it running for
+ * whatever tabs remain.
+ */
 export type DetachCause = "unload" | "respawn" | "fallback" | "logout";
 
 /** RevalidateContext without its signal, which cannot cross a port; the tab supplies its own. */
@@ -19,6 +25,13 @@ export interface PortRevalidateContext {
   readonly removed?: readonly Removed[];
 }
 
+/**
+ * Every message a tab sends the host. `attach` comes first and identifies the tab: until the host has
+ * one, only `ping` is answered and everything else is discarded. Its `hadWorker` says this tab held a
+ * worker link before this attach, which is what earns it a full revalidation where a first attach to a
+ * live stream is given none — the state it holds was built against a stream it can no longer account
+ * for.
+ */
 export type TabToWorker =
   | {
       readonly type: "attach";
@@ -45,6 +58,15 @@ export type TabToWorker =
   | { readonly type: "revalidate_failed"; readonly runId: number; readonly cause: string }
   | { readonly type: "frame_failed"; readonly generation: number; readonly cursor: Cursor | null };
 
+/**
+ * Every message the host sends a tab. Two of them are obligations rather than notifications: a
+ * `heartbeat` must be answered with `heartbeat_ack` or the host expires the port and stops folding this
+ * tab's readings, and a `revalidate_run` must be answered with `revalidate_done` or `revalidate_failed`
+ * carrying the same `runId`, or the host's run stays pending until this port expires, leaves, or the
+ * run's own signal aborts, which the runtime does at `revalidateTimeoutMs` and on `stop()`. A `state`
+ * message precedes the `lifecycle` record of the same transition, so a tab reading its own state inside
+ * that handler reads the new one.
+ */
 export type WorkerToTab =
   | { readonly type: "frame"; readonly frame: Frame; readonly generation: number }
   | { readonly type: "lifecycle"; readonly event: LifecycleEvent }
