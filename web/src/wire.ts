@@ -27,10 +27,19 @@ export interface Hello {
   readonly keepalive_event: string;
 }
 
-/** Why a hello was refused; both reasons take the ordinary backoff ladder. */
+/**
+ * Why a hello was refused. Both reasons end the attempt in its connect phase, so both take the
+ * jitter backoff ladder — or wait in `offline` instead, when the network reading has already gone
+ * false — rather than the server's `retry:` delay, which a refused attempt never reaches.
+ */
 export type HelloRefusal =
   { kind: "bad_hello" } | { kind: "wire_unsupported"; wire: number | null };
 
+/**
+ * validateHello's answer: the accepted hello, or the reason the frame was refused. A refusal
+ * ends the attempt before it counts as open and leaves the client's cursor untouched, so the
+ * next connect presents the same one.
+ */
 export type HelloResult = { ok: true; hello: Hello } | { ok: false; reason: HelloRefusal };
 
 const EPOCH_RE = /^[0-9a-f]{16}$/;

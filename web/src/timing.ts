@@ -58,6 +58,11 @@ export interface TimingConfig {
   readonly maxBufferBytes: number;
 }
 
+/**
+ * The value every field a caller leaves unset takes. Each one is pinned, directly or by derivation,
+ * to the repository's `timing.json` — the single source both halves of the protocol read — so a
+ * client default and the server behaviour it assumes cannot drift apart.
+ */
 export const DEFAULT_TIMING: TimingConfig = {
   connectTimeoutMs: 15_000,
   helloTimeoutMs: 10_000,
@@ -77,7 +82,12 @@ export const DEFAULT_TIMING: TimingConfig = {
   maxBufferBytes: MAX_FRAME_BYTES,
 };
 
-// Silence watchdog derivation follows Yaffle/EventSource: max(3 beats, 15 s), 45 s at the default keepalive.
+/**
+ * Silence watchdog derivation follows Yaffle/EventSource: max(3 beats, 15 s), 45 s at the
+ * default keepalive. `keepaliveMs` is the interval the hello reported, so a server running a
+ * shorter one shortens the watchdog until the floor takes over; the value is re-derived on
+ * every re-arm rather than held.
+ */
 export function watchdogMs(keepaliveMs: number, cfg: TimingConfig = DEFAULT_TIMING): number {
   return Math.max(cfg.watchdogBeats * keepaliveMs, cfg.watchdogFloorMs);
 }

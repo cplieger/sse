@@ -1,6 +1,12 @@
 import type { OnlineSource } from "./online.js";
 import type { VisibilityEvent, VisibilityInput, VisibilitySource } from "./visibility.js";
 
+/**
+ * One attached tab's contribution to the profile: the two readings it forwards. A tab is in the fold
+ * from its attach until it is removed or reports `pagehide`. Its visibility stops counting the moment
+ * it leaves; the profile's network reading is not recomputed on a departure and keeps the last value
+ * reported, by whichever tab.
+ */
 export interface TabState {
   readonly visible: boolean;
   readonly online: boolean;
@@ -8,6 +14,12 @@ export interface TabState {
   readonly pageshowPending: boolean;
 }
 
+/**
+ * One tab's report into the fold, always keyed by `tabId`. An `attach` seeds that tab's two readings,
+ * and `visibility` and `network` update them afterwards. A `visibility` report for a tab the fold does
+ * not know is dropped; a `network` report from one still counts as the profile's latest reading, since
+ * the network is a property of the machine rather than of the tab that noticed.
+ */
 export type FoldInput =
   | {
       readonly type: "attach";
@@ -20,8 +32,17 @@ export type FoldInput =
   /** Detach, port close, expiry: the tab leaves as if by pagehide. */
   | { readonly type: "remove"; readonly tabId: string };
 
+/**
+ * What a fold step emits for the profile's one stream: a transition, never a tab's report. A step that
+ * changes nothing the stream can act on emits nothing — a tab going hidden while another stays visible
+ * is silent — and `pageshow` is emitted at most once per visible period however many tabs are restored.
+ */
 export type FoldOutput = "visible" | "hidden" | "pageshow" | "online" | "offline";
 
+/**
+ * The profile's folded view of its tabs. Every step returns a new value rather than mutating this one,
+ * so a caller may hold an earlier state and compare against it.
+ */
 export interface FoldState {
   readonly tabs: ReadonlyMap<string, TabState>;
   /** The latest network report from any tab, seeded by the host. */
@@ -30,6 +51,11 @@ export interface FoldState {
   readonly pageshown: boolean;
 }
 
+/**
+ * The fold before any tab has attached. `online` is the host's own reading, which stands as the
+ * profile's until a tab reports one, so a host that seeds it wrong holds the stream off the network
+ * until the first tab corrects it.
+ */
 export function createFoldState(online: boolean): FoldState {
   return { tabs: new Map(), online, pageshown: false };
 }
@@ -147,6 +173,12 @@ export interface ProfileVisibilitySource extends VisibilitySource {
   report(tabId: string, ev: VisibilityInput): void;
 }
 
+/**
+ * Creates the visibility reading the worker host gives its stream: the fold over the tabs it has, fed
+ * by attach, detach and report rather than by any platform event. It emits only the profile's own
+ * transitions, so the stream sees one `visible` for a whole set of tabs coming back and one `hidden`
+ * only once none is left showing.
+ */
 export function createProfileVisibilitySource(): ProfileVisibilitySource {
   let state = createFoldState(true);
   const out = listenable<VisibilityEvent>();
@@ -188,6 +220,12 @@ export interface ProfileOnlineSource extends OnlineSource {
   report(tabId: string, online: boolean): void;
 }
 
+/**
+ * Creates the network reading the worker host gives its stream: the last value any tab reported,
+ * starting at `seed`. The tabs are the source because createDOMOnlineSource registers nothing inside a
+ * worker — there is no `window` there to hear `online` and `offline` on — so a host reading the DOM
+ * directly would never be handed a transition to act on.
+ */
 export function createProfileOnlineSource(seed: boolean): ProfileOnlineSource {
   let state = createFoldState(seed);
   const out = listenable<boolean>();

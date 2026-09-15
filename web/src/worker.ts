@@ -34,6 +34,13 @@ export interface TabSet {
   size(): number;
 }
 
+/**
+ * The host's options: a stream's, minus the three it supplies itself — the visibility and network
+ * readings, which it folds from its tabs, and `onFrame`, which it spends fanning frames to the ports.
+ * `revalidate` is widened to receive the attached TabSet beside the context, so the application, not
+ * this package, decides whether the reconciliation body runs in the worker or in the tabs. Everything
+ * else is a stream's, `versions` included: the profile has one map, and it lives here.
+ */
 export interface WorkerHostOptions extends Omit<
   StreamOptions,
   "visibility" | "online" | "onFrame" | "onLifecycle" | "revalidate"
@@ -46,6 +53,12 @@ export interface WorkerHostOptions extends Omit<
   readonly heartbeatMs?: number;
 }
 
+/**
+ * The profile's stream owner: one stream, one cursor and one version map behind however many tabs.
+ * The stream starts when the first tab attaches, and it is stopped by `close()`, by a `logout` detach
+ * or by a 401 — not by the last port going away, since the browser keeps a SharedWorker alive for its
+ * owner documents and a tab that navigates is expected back.
+ */
 export interface WorkerHost {
   /** Called from the SharedWorker's onconnect with each new port. */
   attach(port: MessagePort): void;

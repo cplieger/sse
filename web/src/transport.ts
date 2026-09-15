@@ -38,6 +38,13 @@ export interface TransportCallbacks {
   readonly onEnd: (generation: number, reason: StreamEnd) => void;
 }
 
+/**
+ * One attempt's inputs. `cursor` is presented as `Last-Event-ID` and `maxWire` as `SSE-Wire`, both
+ * merged under `headers`, so a caller's header of the same name wins over the transport's own — the
+ * seam a consumer uses to override them, and the one it must not trip over by accident. `generation`
+ * tags every callback with it, which is what lets the runtime tell a live report from one belonging
+ * to an attempt it has already replaced.
+ */
 export interface ConnectOptions {
   readonly url: string;
   readonly fetch: typeof fetch;
@@ -50,6 +57,11 @@ export interface ConnectOptions {
   readonly callbacks: TransportCallbacks;
 }
 
+/**
+ * A connection attempt in progress. `abort` is the whole surface: the attempt reports its outcome
+ * through the callbacks it was given, and aborting it silences those callbacks for good, the fetch
+ * and the reader it is still waiting on included. A second abort does nothing.
+ */
 export interface Connection {
   /** Ends the attempt; nothing is dispatched afterwards. */
   abort(reason: string): void;

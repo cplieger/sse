@@ -1,13 +1,29 @@
+/**
+ * The six page events a source reports. Two of them never reach the reducer: adaptVisibility folds
+ * `freeze` onto `hidden` and `resume` onto `visible`, the latter only while the source still reads
+ * visible, because a resumed page may have been resumed in the background.
+ */
 export type VisibilityEvent = "visible" | "hidden" | "pagehide" | "pageshow" | "freeze" | "resume";
 
 /** The four visibility inputs the reducer accepts; the adapter folds freeze and resume into them. */
 export type VisibilityInput = "visible" | "hidden" | "pagehide" | "pageshow";
 
+/**
+ * The page-visibility reading, injected rather than assumed: `visible()` is asked on demand and
+ * `listen` returns the unsubscribe for the stream of events. createDOMVisibilitySource is the
+ * implementation over `document` and `window`; the worker host passes the fold over its tabs
+ * instead, and a test passes whatever it wants to drive.
+ */
 export interface VisibilitySource {
   visible(): boolean;
   listen(cb: (ev: VisibilityEvent) => void): () => void;
 }
 
+/**
+ * One visibility reading shared by every subscriber. The source is listened to only while at least
+ * one subscriber is attached, so a manager nobody uses registers no listener, and a pin set through
+ * setVisible replaces the source's answer for readers and emitters alike.
+ */
 export interface VisibilityManager {
   isVisible(): boolean;
   /** The source is listened to from the first subscriber to the last. */

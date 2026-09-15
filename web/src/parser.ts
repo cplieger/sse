@@ -10,6 +10,12 @@ export interface ParsedEvent {
   readonly bytes: number;
 }
 
+/**
+ * What the parser reports. `onEvent` fires once per dispatched frame, which per WHATWG means a
+ * frame carrying no `data` field dispatches nothing at all — its `id` is still remembered as
+ * the sticky last event id. The other three are optional and each fires for one wire feature:
+ * a well-formed `retry:` value, a comment line, and the buffer cap being passed.
+ */
 export interface ParserHandlers {
   readonly onEvent: (event: ParsedEvent) => void;
   readonly onRetry?: (ms: number) => void;
@@ -18,10 +24,20 @@ export interface ParserHandlers {
   readonly onOverflow?: (bytes: number) => void;
 }
 
+/**
+ * The parser's only bound: the encoded bytes one frame may occupy, counted from the end of the
+ * previous frame and including its own terminating blank line. It must be at least
+ * MAX_FRAME_BYTES, or a frame the server is entitled to send would abort every connection.
+ */
 export interface ParserOptions {
   readonly maxBufferBytes: number;
 }
 
+/**
+ * A byte-fed event-stream parser. Feeding is incremental: a chunk may split a line, a CRLF pair
+ * or a multi-byte character, and the parse resumes from the next chunk. Once a frame passes
+ * maxBufferBytes the parser latches off — every further feed is ignored until reset().
+ */
 export interface Parser {
   feed(chunk: Uint8Array): void;
   /** Returns the parser to its construction state; a partial event is discarded. */
