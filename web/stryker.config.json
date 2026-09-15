@@ -1,0 +1,21 @@
+{
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.stryker.config.ts",
+    "related": false
+  },
+  "checkers": ["typescript"],
+  "tsconfigFile": "tsconfig.json",
+  "inPlace": true,
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/**/*-setup.ts", "!src/**/test-helpers/**"],
+  "mutator": {
+    "excludedMutations": ["StringLiteral"]
+  },
+  "ignoreStatic": true,
+  "thresholds": {
+    "high": 80,
+    "low": 60
+  },
+  "concurrency": 4,
+  "ignorePatterns": ["node_modules", "reports", "coverage", "dist"]
+}
