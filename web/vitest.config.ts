@@ -69,7 +69,10 @@ export default defineConfig({
     // files run one at a time and the projects one after the other (groupOrder above).
     fileParallelism: false,
     setupFiles: ["./src/fc-strict-setup.ts"],
-    exclude: ["node_modules/**"],
+    // Stryker runs `inPlace`, so it mirrors every mutated file into
+    // .stryker-tmp/backup-*; without this the whole suite is collected a second
+    // time from that copy, where the repo-root fixtures no longer resolve.
+    exclude: ["node_modules/**", "**/.stryker-tmp/**"],
     passWithNoTests: false,
     allowOnly: false,
     globals: false,

@@ -78,6 +78,8 @@ cd web && UPDATE_GOLDEN=1 npx vitest run src/reducer.node.test.ts    # web/src/r
 
 The framing golden is read by the TypeScript parser suite as well, so a regenerated file lands with both halves in one commit.
 
+Mutation testing is not part of `npm test`, and the local command is not sandboxed. `npx stryker run` from `web/` mutates the real tree, because two suites read `timing.json` and `testdata/framing.golden.json` from the repository root and a sandbox copy cannot reach either. So start it on a clean tree, leave the package alone until it finishes, and delete the `web/stryker-setup-*.js` files it leaves behind before running the lint checks.
+
 ## Conventions and gotchas
 
 - **One runtime dependency in Go, none in TypeScript.** The module requires `github.com/cplieger/webhttp/v3` for the JSON error envelope and `pgregory.net/rapid` for the property tests only; `timing_test.go` fails on any other require. The TypeScript package's one test-only dependency beside the toolchain is `eventsource-parser`, the reference the owned parser is differentially fuzzed against. Neither package ships a test dependency.
