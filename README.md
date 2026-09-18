@@ -1,10 +1,6 @@
 # sse
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/cplieger/sse.svg)](https://pkg.go.dev/github.com/cplieger/sse)
-[![npm](https://img.shields.io/npm/v/@cplieger/sse)](https://www.npmjs.com/package/@cplieger/sse)
-[![JSR](https://jsr.io/badges/@cplieger/sse)](https://jsr.io/@cplieger/sse)
-[![Mutation](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation.json)](https://github.com/cplieger/sse/issues?q=label%3Agremlins-tracker)
-[![Mutation (TS)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation-ts.json)](https://github.com/cplieger/sse/issues?q=label%3Astryker-tracker)
+[![Go Reference](https://pkg.go.dev/badge/github.com/cplieger/sse.svg)](https://pkg.go.dev/github.com/cplieger/sse) [![npm](https://img.shields.io/npm/v/@cplieger/sse)](https://www.npmjs.com/package/@cplieger/sse) [![JSR](https://jsr.io/badges/@cplieger/sse)](https://jsr.io/@cplieger/sse) [![Mutation](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation.json)](https://github.com/cplieger/sse/issues?q=label%3Agremlins-tracker) [![Mutation (TS)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation-ts.json)](https://github.com/cplieger/sse/issues?q=label%3Astryker-tracker)
 
 > Server-Sent Events that resume from an exact cursor: a Go broadcast hub and a TypeScript client speaking one wire.
 
