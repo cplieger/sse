@@ -3,20 +3,20 @@
 /** Same-origin path the vitest dev server forwards to the fixture for the browser projects. */
 export const FIXTURE_PROXY_PREFIX = "/__fixture";
 
-export interface FixturePosition {
+interface FixturePosition {
   readonly epoch: string;
   readonly floor: string;
   readonly head: string;
 }
 
-export interface FixturePresence {
+interface FixturePresence {
   readonly tag: string;
   readonly last_alive_at: string;
   readonly connected: number;
   readonly gone: boolean;
 }
 
-export interface FixturePresenceEvent {
+interface FixturePresenceEvent {
   readonly at: string;
   readonly kind: "connected" | "disconnected";
   readonly topic: string;
@@ -28,7 +28,7 @@ export interface FixturePresenceEvent {
   readonly client_id: number;
 }
 
-export interface FixtureState {
+interface FixtureState {
   readonly position: FixturePosition;
   readonly presence: FixturePresence[];
   readonly events: FixturePresenceEvent[];
@@ -39,7 +39,7 @@ export interface FixtureState {
   readonly v3_connects: number;
 }
 
-export interface PublishRequest {
+interface PublishRequest {
   readonly topic?: string;
   readonly name?: string;
   readonly data?: string;
@@ -48,19 +48,19 @@ export interface PublishRequest {
   readonly size?: number;
 }
 
-export interface PublishResponse {
+interface PublishResponse {
   readonly head: string;
   readonly offsets: string[];
 }
 
-export interface MutateResponse {
+interface MutateResponse {
   readonly kind: string;
   readonly ref: string;
   readonly version: string;
   readonly status: string;
 }
 
-export interface RestResponse {
+interface RestResponse {
   readonly kind: string;
   readonly ref: string;
   readonly version: string;

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // `entry` EXTENDS knip's defaults rather than replacing them, so only the
+  // non-default entry points belong here — and treatConfigHintsAsErrors below
+  // turns a row that stops being needed into a failure rather than a silent
+  // stale suppression.
+  "entry": [
+    // Mutation-only vitest config, entered by Stryker rather than by an import.
+    // It exists because instrumentation pushes the 64 MiB hold_overflow test
+    // past the normal 5s cap; see the Stryker section in the repo's docs.
+    "vitest.stryker.config.ts",
+  ],
+  "treatConfigHintsAsErrors": true,
+  // Import cycles fail the gate. `cycles` is knip's one warn-level issue type, so
+  // without this it prints and still exits 0 — and under ts-ci's continue-on-error
+  // plus marker-file trailer that reads as a green check with a warning nobody sees.
+  "rules": { "cycles": "error" },
+}
