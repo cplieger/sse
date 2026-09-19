@@ -36,7 +36,11 @@ const projects = [
             browser: {
               enabled: true,
               headless: true,
-              provider: playwright({ launchOptions: { channel: "chromium" } }),
+              // Chromium delivers animation frames at ~60Hz, so each frame a test awaits
+              // costs it ~16.7ms; this removes the cap.
+              provider: playwright({
+                launchOptions: { channel: "chromium", args: ["--disable-frame-rate-limit"] },
+              }),
               instances: [{ browser: "chromium" }],
               viewport: { width: 1280, height: 720 },
               screenshotFailures: false,

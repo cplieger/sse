@@ -11,6 +11,7 @@ import { FAKE_CLOCK } from "./scripted-fetch.js";
 import {
   type FakeOnline,
   type FakeVisibility,
+  type PendingRun,
   fakeOnline,
   fakeVisibility,
 } from "./stream-harness.js";
@@ -42,12 +43,6 @@ async function waitFor(
     }
     await sleep(10);
   }
-}
-
-interface PendingRun {
-  readonly ctx: RevalidateContext;
-  resolve(): void;
-  reject(error: Error): void;
 }
 
 type Body = (ctx: RevalidateContext, app: App) => Promise<void>;

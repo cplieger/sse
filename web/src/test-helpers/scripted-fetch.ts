@@ -1,5 +1,5 @@
 /** How the next stream request is answered; every field has a healthy default. */
-export interface ScriptedAnswer {
+interface ScriptedAnswer {
   readonly status?: number;
   /** null omits the header entirely. */
   readonly contentType?: string | null;
@@ -9,7 +9,7 @@ export interface ScriptedAnswer {
   readonly noBody?: boolean;
 }
 
-export interface ScriptedRequest {
+interface ScriptedRequest {
   readonly url: string;
   readonly method: string;
   readonly headers: Readonly<Record<string, string>>;
