@@ -32,3 +32,6 @@ web/stryker-setup-*.js
 
 # Local tool caches (never committed)
 .gocache/
+
+# Agent workflow scratch
+.agents/
