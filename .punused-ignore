@@ -11,11 +11,11 @@
 # project", its README's first caveat), so every API symbol whose callers live
 # in a consumer module is reported EU1002 (no reference) or EU1001 (referenced
 # only from this repo's _test.go files). Consumer evidence below was taken
-# against the two modules adopting this one (vibekit, subflux); the file and
+# against the two modules adopting this one (marotte, subflux); the file and
 # call shape are the durable part, line numbers are the snapshot at
 # adjudication time.
 #
-# Hub options a consumer sets when constructing its hub. vibekit
+# Hub options a consumer sets when constructing its hub. marotte
 # internal/agent/runtime.go:348-351 passes WithKeepalive, WithKeepaliveEvent,
 # WithWriteTimeout and WithReconnectDelay; subflux internal/server/events/bus.go:88
 # passes WithMaxClients.
@@ -42,7 +42,7 @@ method (*Hub).SetMaxClients
 method (*Hub).Snapshot
 #
 # The ssetest seam consumers reuse from their own tests (README "Testing
-# against the hub"). NewRecorder: vibekit internal/git/handlers_test.go. Serve
+# against the hub"). NewRecorder: marotte internal/git/handlers_test.go. Serve
 # and Frames are the two halves of the same seam and are exercised by this
 # module's own tests only until a consumer's suite drives a hub end to end.
 function Serve
