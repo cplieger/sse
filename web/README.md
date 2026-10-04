@@ -64,7 +64,7 @@ The package typechecks under `lib: ["ESNext", "WebWorker"]` as well as under the
 
 ## Full documentation
 
-The Go server API, the hub options, the hello's verdicts, the digest and the presence hook are in the [repository README](https://github.com/cplieger/sse#readme). The shared timing constants both halves pin are in the repository's `timing.json`.
+The Go server API is in the [repository README](https://github.com/cplieger/sse#readme). The hub options and the presence hook are in [Running the hub](https://github.com/cplieger/sse/blob/main/docs/hub.md), and the hello's verdicts and the digest are in [The wire contract](https://github.com/cplieger/sse/blob/main/docs/wire.md). The shared timing constants both halves pin are in the repository's `timing.json`.
 
 ## Disclaimer
 
