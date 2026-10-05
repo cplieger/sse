@@ -120,7 +120,7 @@ The client needs Chrome 98, Firefox 97 or Safari 15.4 or later. `SharedWorker` i
 
 ## Contributing
 
-Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how the Go and TypeScript halves are kept in step.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Disclaimer
 
