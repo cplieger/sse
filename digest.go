@@ -176,12 +176,12 @@ func (h *Hub) DigestHandler(resolve Resolver, opts ...DigestOption) http.Handler
 func (h *Hub) answerDigest(w http.ResponseWriter, r *http.Request, req *digestRequest, resolve Resolver) {
 	subjects := *req.Subjects
 	if len(subjects) == 0 {
-		h.writeDigest(w, h.Position(), nil, nil, 0, false)
+		writeDigest(w, h.Position(), nil, nil, 0, false)
 		return
 	}
 	if req.Epoch != h.epoch {
 		h.logger.Debug("sse: digest epoch mismatch", "request_epoch", req.Epoch, "epoch", h.epoch)
-		h.writeDigest(w, h.Position(), nil, nil, 0, true)
+		writeDigest(w, h.Position(), nil, nil, 0, true)
 		return
 	}
 	held := make([]Held, len(subjects))
@@ -191,7 +191,7 @@ func (h *Hub) answerDigest(w http.ResponseWriter, r *http.Request, req *digestRe
 	states, err := resolve(r.Context(), held)
 	if err != nil {
 		h.logger.Warn("sse: digest resolver failed", "error", err, "subjects", len(held))
-		h.writeDigest(w, h.Position(), nil, nil, 0, true)
+		writeDigest(w, h.Position(), nil, nil, 0, true)
 		return
 	}
 	changed, removed, mismatch := matchByKey(held, states)
@@ -199,15 +199,15 @@ func (h *Hub) answerDigest(w http.ResponseWriter, r *http.Request, req *digestRe
 		h.logger.Error("sse: digest resolver output does not match request",
 			"class", mismatch.class, "request_subjects", len(held), "resolver_states", len(states),
 			"kind", sanitizeLogValue(mismatch.key.Kind), "ref", sanitizeLogValue(mismatch.key.Ref))
-		h.writeDigest(w, h.Position(), nil, nil, 0, true)
+		writeDigest(w, h.Position(), nil, nil, 0, true)
 		return
 	}
-	h.writeDigest(w, h.Position(), changed, removed, len(held), false)
+	writeDigest(w, h.Position(), changed, removed, len(held), false)
 }
 
 // writeDigest renders the response; Position is read by the caller after the
 // resolver returned, so head is at or after every version compared.
-func (h *Hub) writeDigest(w http.ResponseWriter, pos Position, changed []digestChanged, removed []digestRemoved, checked int, mustRefetch bool) {
+func writeDigest(w http.ResponseWriter, pos Position, changed []digestChanged, removed []digestRemoved, checked int, mustRefetch bool) {
 	if changed == nil {
 		changed = []digestChanged{}
 	}
