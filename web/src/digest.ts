@@ -94,7 +94,9 @@ function subjectKey(subject: Subject): string {
 }
 
 interface Position {
+  // deadset:ignore DS1301 -- check() spreads the position into the DigestResult it returns
   readonly epoch: string;
+  // deadset:ignore DS1301 -- check() spreads the position into the DigestResult it returns
   readonly head: string;
 }
 
