@@ -39,7 +39,7 @@ func drawRing(t *rapid.T) *ringModel {
 	return m
 }
 
-func (m *ringModel) resolveAndReplay(t *rapid.T, since uint64, topic string, replyCap int) (Verdict, bool, []entry) {
+func (m *ringModel) resolveAndReplay(since uint64, topic string, replyCap int) (Verdict, bool, []entry) {
 	verdict, resumed := resolve(Cursor{Epoch: testEpoch, Offset: since}, true, testEpoch, m.r.floor(), m.head, m.r.len(), replyCap)
 	var replay []entry
 	if resumed && since < m.head {
@@ -54,7 +54,7 @@ func TestResolve_replayIsFilteredOrderedSubset(t *testing.T) {
 		since := rapid.Uint64Range(0, m.head).Draw(t, "since")
 		topic := rapid.SampledFrom(topics).Draw(t, "topic")
 		replyCap := rapid.IntRange(0, m.r.len()).Draw(t, "replyCap")
-		_, _, replay := m.resolveAndReplay(t, since, topic, replyCap)
+		_, _, replay := m.resolveAndReplay(since, topic, replyCap)
 
 		var want []uint64
 		for _, e := range m.survivors() {
@@ -83,7 +83,7 @@ func TestResolve_lengthBoundedByHeadMinusSince(t *testing.T) {
 		since := rapid.Uint64Range(0, m.head).Draw(t, "since")
 		topic := rapid.SampledFrom(topics).Draw(t, "topic")
 		replyCap := int(m.head)
-		verdict, resumed, replay := m.resolveAndReplay(t, since, topic, replyCap)
+		verdict, resumed, replay := m.resolveAndReplay(since, topic, replyCap)
 		if uint64(len(replay)) > m.head-since {
 			t.Fatalf("len(replay) = %d, above head-since = %d (verdict %s)", len(replay), m.head-since, verdict)
 		}
@@ -104,7 +104,7 @@ func TestResolve_capAppliedToUnfilteredSpan(t *testing.T) {
 		topic := rapid.SampledFrom(topics[1:]).Draw(t, "topic")
 		span := int(m.head - since)
 		replyCap := rapid.IntRange(0, span-1).Draw(t, "replyCap")
-		verdict, _, replay := m.resolveAndReplay(t, since, topic, replyCap)
+		verdict, _, replay := m.resolveAndReplay(since, topic, replyCap)
 		if m.r.len() == 0 || since+1 < m.r.floor() {
 			if verdict != VerdictGapFloor {
 				t.Fatalf("resolve(since=%d below floor %d) = %s, want gap_floor", since, m.r.floor(), verdict)

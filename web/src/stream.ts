@@ -112,7 +112,6 @@ type HeldEntry =
       readonly kind: "frame";
       readonly generation: number;
       readonly frame: Frame;
-      readonly bytes: number;
     }
   | {
       readonly kind: "adopt";
@@ -201,7 +200,7 @@ export function createStream(opts: StreamOptions): Stream {
     opts.onLifecycle?.(event);
   }
 
-  bindListener(opts.versions, (epoch, _dropped) => {
+  bindListener(opts.versions, (epoch) => {
     const previous = knownEpoch;
     knownEpoch = epoch;
     if (binding || inflight === null || !queued?.full) {
@@ -469,7 +468,7 @@ export function createStream(opts: StreamOptions): Stream {
   }
 
   function hold(frame: Frame, bytes: number): void {
-    held.push({ kind: "frame", generation: state.generation, frame, bytes });
+    held.push({ kind: "frame", generation: state.generation, frame });
     heldFrames++;
     heldBytes += bytes;
     if (heldFrames > cfg.heldMaxFrames || heldBytes > cfg.heldMaxBytes) {
