@@ -3,9 +3,7 @@ import type { TestProject } from "vitest/node";
 import { fixtureOrigin, fixturePort } from "./fixture-port.js";
 
 declare module "vitest" {
-  // deadset:ignore DS1201 -- merges into vitest's ProvidedContext, which types project.provide below and inject in the integration tests
   export interface ProvidedContext {
-    // deadset:ignore DS1003 -- named by the "sseFixtureUrl" key passed to project.provide below and to inject in the integration tests
     sseFixtureUrl: string;
   }
 }
