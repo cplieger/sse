@@ -72,7 +72,7 @@ export default defineConfig({
     // The fixture-driven suites share one fixture whose control flags are global state, so
     // files run one at a time and the projects one after the other (groupOrder above).
     fileParallelism: false,
-    setupFiles: ["./src/fc-strict-setup.ts"],
+    setupFiles: ["./src/fc-strict-setup.ts", "./src/page-lifecycle-setup.ts"],
     // Stryker runs `inPlace`, so it mirrors every mutated file into
     // .stryker-tmp/backup-*; without this the whole suite is collected a second
     // time from that copy, where the repo-root fixtures no longer resolve.
