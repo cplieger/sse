@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDigestClient } from "./digest.js";
-import { bindListener, createVersionMap, type Subject } from "./versions.js";
+import { bindListener, createVersionMap, staleListener, type Subject } from "./versions.js";
 
 const A = "aaaaaaaaaaaaaaaa";
 const B = "bbbbbbbbbbbbbbbb";
@@ -67,6 +67,19 @@ describe("version map", () => {
     expect(map.observe(chat, "41", A)).toBe(false);
     expect(map.snapshot().held).toEqual([{ kind: "chat", ref: "c_1", version: "3" }]);
     expect(stale).toEqual([[chat, A]]);
+  });
+
+  it("a staleListener stops being told once its unsubscribe has run", () => {
+    const seen: [Subject, string][] = [];
+    const map = createVersionMap();
+    const off = staleListener(map, (subject, epoch) => seen.push([subject, epoch]));
+    map.bind(B);
+    expect(map.observe(chat, "41", A)).toBe(false);
+    expect(seen).toEqual([[chat, A]]);
+    off();
+    expect(map.observe(tabs, "12", A)).toBe(false);
+    expect(seen).toEqual([[chat, A]]);
+    expect(() => staleListener({ ...map }, () => undefined)).toThrow(TypeError);
   });
 
   it("observe with an epoch on an unbound map binds and records", () => {
