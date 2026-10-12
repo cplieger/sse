@@ -1,250 +1,214 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LifecycleEvent } from "./lifecycle.js";
 import type { TabToWorker, WorkerToTab } from "./port-protocol.js";
 import type { RevalidateContext } from "./stream.js";
-import { createVersionMap } from "./versions.js";
+import {
+  FAKE_CLOCK,
+  KEEPALIVE_FRAME,
+  type ScriptedFetch,
+  flush,
+  helloFrame,
+  scriptedFetch,
+} from "./test-helpers/scripted-fetch.js";
+import { type VersionMap, createVersionMap } from "./versions.js";
 import { type TabSet, type WorkerHost, createWorkerHost } from "./worker.js";
 
-const HB = 40;
-const URL_EVENTS = "https://sse.invalid/events";
-const URL_ALIVE = "https://sse.invalid/alive";
+const A = "aaaaaaaaaaaaaaaa";
+const HB = 1000;
+const URL_ALIVE = "/alive";
 
-function tick(ms = 0): Promise<void> {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
+/** One host revalidation, held open until the test settles it. */
+interface HostRun {
+  readonly ctx: RevalidateContext;
+  readonly tabs: TabSet;
+  reject(reason: unknown): void;
 }
 
-async function waitFor(what: string, pred: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!pred()) {
-    if (Date.now() > deadline) {
-      throw new Error(`timed out waiting for ${what}`);
-    }
-    await tick(5);
-  }
-}
-
-/** A fetch that serves one controllable event stream and answers the alive POST. */
-function transport(): {
-  readonly fetch: typeof fetch;
-  readonly alivePosts: number[];
-  aliveStatus: number;
-  write(text: string): void;
-  hello(over?: Record<string, unknown>): void;
-  keepalive(): void;
-} {
-  const encoder = new TextEncoder();
-  let ctl: ReadableStreamDefaultController<Uint8Array> | null = null;
-  const alivePosts: number[] = [];
-  const self = {
-    fetch: ((input: unknown, init?: RequestInit) => {
-      if (init?.method === "POST") {
-        alivePosts.push(self.aliveStatus);
-        return Promise.resolve(new Response(null, { status: self.aliveStatus }));
-      }
-      void input;
-      const body = new ReadableStream<Uint8Array>({
-        start(controller) {
-          ctl = controller;
-        },
-      });
-      return Promise.resolve(
-        new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
-      );
-    }) as unknown as typeof fetch,
-    alivePosts,
-    aliveStatus: 200,
-    write(text: string) {
-      ctl?.enqueue(encoder.encode(text));
-    },
-    hello(over: Record<string, unknown> = {}) {
-      const payload = {
-        wire: 1,
-        epoch: "e1",
-        floor: "0",
-        head: "0",
-        resumed: false,
-        verdict: "fresh",
-        keepalive_ms: 15_000,
-        keepalive_event: "sse:keepalive",
-        ...over,
-      };
-      self.write(`event: sse:hello\ndata: ${JSON.stringify(payload)}\n\n`);
-    },
-    keepalive() {
-      self.write("event: sse:keepalive\ndata: \n\n");
-    },
-  };
-  return self;
-}
-
-/** One fake tab: a MessageChannel whose host end the host owns. */
-interface Tab {
-  readonly sent: WorkerToTab[];
-  post(message: TabToWorker): void;
-  attach(over?: Partial<Extract<TabToWorker, { type: "attach" }>>): void;
-  ofType<K extends WorkerToTab["type"]>(type: K): Extract<WorkerToTab, { type: K }>[];
-  readonly id: string;
+interface Host {
+  readonly host: WorkerHost;
+  readonly sf: ScriptedFetch;
+  readonly versions: VersionMap;
+  readonly runs: HostRun[];
+  ofKind<K extends LifecycleEvent["kind"]>(kind: K): Extract<LifecycleEvent, { kind: K }>[];
 }
 
 const hosts: WorkerHost[] = [];
-let tabSeq = 0;
 
-function harness(
-  opts: {
-    readonly revalidate?: (ctx: RevalidateContext, tabs: TabSet) => Promise<void>;
-    readonly onlineSeed?: boolean;
-    readonly alive?: boolean;
-    readonly fetch?: typeof fetch;
-  } = {},
-): {
-  readonly host: WorkerHost;
-  readonly events: LifecycleEvent[];
-  kinds(): string[];
-  tab(): Tab;
-} {
+function hostHarness(opts: { readonly alive?: boolean } = {}): Host {
+  const sf = scriptedFetch();
+  const versions = createVersionMap();
   const events: LifecycleEvent[] = [];
+  const runs: HostRun[] = [];
   const host = createWorkerHost({
-    url: URL_EVENTS,
-    ...(opts.fetch === undefined ? {} : { fetch: opts.fetch }),
-    versions: createVersionMap(),
+    url: "/events",
+    fetch: sf.fetch,
+    versions,
     heartbeatMs: HB,
-    timing: { heartbeatMs: HB },
-    ...(opts.alive === true ? { alive: { url: URL_ALIVE } } : {}),
-    ...(opts.onlineSeed === undefined ? {} : { onlineSeed: opts.onlineSeed }),
-    revalidate: opts.revalidate ?? (() => Promise.resolve()),
+    ...(opts.alive === true ? { alive: { url: URL_ALIVE, everyBeats: 1 } } : {}),
     onLifecycle(ev) {
       events.push(ev);
+    },
+    revalidate(ctx, tabs) {
+      return new Promise<void>((_resolve, reject) => {
+        runs.push({ ctx, tabs, reject });
+      });
     },
   });
   hosts.push(host);
   return {
     host,
-    events,
-    kinds: () => events.map((e) => e.kind),
-    tab(): Tab {
-      const channel = new MessageChannel();
-      const sent: WorkerToTab[] = [];
-      channel.port2.onmessage = (event: MessageEvent) => {
-        sent.push(event.data as WorkerToTab);
-      };
-      channel.port2.start();
-      host.attach(channel.port1 as unknown as MessagePort);
-      const id = `tab_${String(++tabSeq)}`;
-      return {
-        sent,
-        id,
-        post(message) {
-          channel.port2.postMessage(message);
-        },
-        attach(over = {}) {
-          channel.port2.postMessage({
-            type: "attach",
-            tabId: id,
-            visible: true,
-            online: true,
-            hadWorker: false,
-            tag: "",
-            ...over,
-          });
-        },
-        ofType(type) {
-          return sent.filter((m) => m.type === type) as Extract<
-            WorkerToTab,
-            { type: typeof type }
-          >[];
-        },
-      };
+    sf,
+    versions,
+    runs,
+    ofKind(kind) {
+      return events.filter((e) => e.kind === kind) as Extract<
+        LifecycleEvent,
+        { kind: typeof kind }
+      >[];
     },
   };
 }
 
-afterEach(() => {
+/** It does not acknowledge heartbeats automatically. */
+interface Tab {
+  send(message: TabToWorker): void;
+  attach(over?: Partial<Extract<TabToWorker, { type: "attach" }>>): void;
+  ofType<K extends WorkerToTab["type"]>(type: K): Extract<WorkerToTab, { type: K }>[];
+}
+
+function tab(h: Host, tabId: string): Tab {
+  const channel = new MessageChannel();
+  const received: WorkerToTab[] = [];
+  channel.port2.onmessage = (event: MessageEvent) => {
+    received.push(event.data as WorkerToTab);
+  };
+  h.host.attach(channel.port1);
+  const send = (message: TabToWorker): void => {
+    channel.port2.postMessage(message);
+  };
+  return {
+    send,
+    attach(over = {}) {
+      send({
+        type: "attach",
+        tabId,
+        visible: true,
+        online: true,
+        hadWorker: false,
+        tag: "",
+        ...over,
+      });
+    },
+    ofType(type) {
+      return received.filter((m) => m.type === type) as Extract<
+        WorkerToTab,
+        { type: typeof type }
+      >[];
+    },
+  };
+}
+
+async function settle(): Promise<void> {
+  await flush(10);
+}
+
+async function beats(n: number): Promise<void> {
+  for (let i = 0; i < n; i++) {
+    vi.advanceTimersByTime(HB);
+    await settle();
+  }
+}
+
+/** Pushes a hello on the host's latest connection; a fresh hello earns one host run. */
+async function hello(h: Host, overrides: Record<string, unknown> = {}): Promise<void> {
+  await settle();
+  const conn = h.sf.connections.at(-1);
+  if (conn === undefined) {
+    throw new Error("host opened no connection");
+  }
+  conn.push(helloFrame({ epoch: A, ...overrides }));
+  await settle();
+}
+
+beforeEach(() => {
+  vi.useFakeTimers(FAKE_CLOCK);
+});
+
+afterEach(async () => {
   for (const host of hosts.splice(0)) {
     host.close();
   }
+  await flush(4);
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("createWorkerHost: the port conversation", () => {
   it("answers a ping with a pong carrying the same seq, before any attach", async () => {
-    const h = harness();
-    const tab = h.tab();
-    tab.post({ type: "ping", seq: 21 });
-    await waitFor("pong", () => tab.ofType("pong").length === 1);
-    expect(tab.ofType("pong")).toEqual([{ type: "pong", seq: 21 }]);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.send({ type: "ping", seq: 21 });
+    await settle();
+    expect(t.ofType("pong")).toEqual([{ type: "pong", seq: 21 }]);
   });
 
   it("discards everything but ping from a port that has not attached", async () => {
-    const h = harness();
-    const tab = h.tab();
-    tab.post({ type: "reconnect", resetCursor: true });
-    tab.post({ type: "ping", seq: 1 });
-    await waitFor("pong", () => tab.ofType("pong").length === 1);
-    expect(h.kinds()).not.toContain("tab_attached");
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.send({ type: "observed", subject: { kind: "chat", ref: "c1" }, version: "4", epoch: A });
+    t.send({ type: "ping", seq: 1 });
+    await settle();
+    expect(t.ofType("pong")).toEqual([{ type: "pong", seq: 1 }]);
+    expect(h.versions.snapshot()).toEqual({ epoch: null, held: [] });
+    expect(h.ofKind("tab_attached")).toEqual([]);
   });
 
   it("reports a tab's arrival with the stream state it joined", async () => {
-    const h = harness();
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    expect(h.events.filter((e) => e.kind === "tab_attached")).toEqual([
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await settle();
+    expect(h.ofKind("tab_attached")).toEqual([
       { kind: "tab_attached", replaced: false, state: "connecting" },
     ]);
-    expect(tab.ofType("state")).toHaveLength(1);
+    expect(t.ofType("state").at(-1)?.state.kind).toBe("connecting");
+    expect(h.sf.connections).toHaveLength(1);
   });
 
   it("heartbeats every attached port and expires one that never acknowledges", async () => {
-    const h = harness();
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("heartbeat", () => tab.ofType("heartbeat").length >= 1);
-    await waitFor("expired", () => h.kinds().includes("port_expired"), 4000);
-    expect(h.kinds()).toContain("port_expired");
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await settle();
+    await beats(3);
+    expect(t.ofType("heartbeat").map((m) => m.seq)).toEqual([1, 2, 3]);
+    expect(h.ofKind("port_expired")).toEqual([]);
+    await beats(1);
+    expect(h.ofKind("port_expired")).toEqual([{ kind: "port_expired", sinceLastAckMs: 4 * HB }]);
   });
 
   it("repairs an expired port on its next acknowledgement", async () => {
-    const h = harness();
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("expired", () => h.kinds().includes("port_expired"), 4000);
-    tab.post({ type: "heartbeat_ack", seq: 1 });
-    await waitFor("repaired", () => h.kinds().includes("port_repaired"), 4000);
-    expect(tab.ofType("stale")).toHaveLength(1);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await settle();
+    await beats(4);
+    expect(h.ofKind("port_expired")).toHaveLength(1);
+    t.send({ type: "heartbeat_ack", seq: 4 });
+    await settle();
+    expect(h.ofKind("port_repaired")).toEqual([{ kind: "port_repaired" }]);
+    expect(t.ofType("stale")).toEqual([{ type: "stale" }]);
+    expect(t.ofType("revalidate_run")).toMatchObject([{ ctx: { cause: "hello", full: true } }]);
   });
 
   it("records a tab's stamp into the profile's one version map", async () => {
-    const map = createVersionMap();
-    const host = createWorkerHost({
-      url: URL_EVENTS,
-      fetch: transport().fetch,
-      versions: map,
-      heartbeatMs: HB,
-      revalidate: () => Promise.resolve(),
-    });
-    hosts.push(host);
-    const channel = new MessageChannel();
-    channel.port2.start();
-    host.attach(channel.port1 as unknown as MessagePort);
-    channel.port2.postMessage({
-      type: "attach",
-      tabId: "t1",
-      visible: true,
-      online: true,
-      hadWorker: false,
-      tag: "",
-    });
-    channel.port2.postMessage({
-      type: "observed",
-      subject: { kind: "chat", ref: "c1" },
-      version: "41",
-      epoch: "e9",
-    });
-    await waitFor("observed", () => map.has({ kind: "chat", ref: "c1" }));
-    expect(map.snapshot()).toEqual({
-      epoch: "e9",
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    t.send({ type: "observed", subject: { kind: "chat", ref: "c1" }, version: "41", epoch: A });
+    await settle();
+    expect(h.versions.snapshot()).toEqual({
+      epoch: A,
       held: [{ kind: "chat", ref: "c1", version: "41" }],
     });
   });
@@ -252,325 +216,265 @@ describe("createWorkerHost: the port conversation", () => {
 
 describe("createWorkerHost: folding the tabs' readings", () => {
   it("takes the profile offline when a tab reports the network gone", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    tab.post({ type: "network", online: false });
-    await waitFor("offline", () => h.host.stream().state().kind === "offline", 4000);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h, { resumed: true });
+    expect(h.host.stream().state().kind).toBe("open");
+    t.send({ type: "network", online: false });
+    await settle();
     expect(h.host.stream().state().kind).toBe("offline");
   });
 
   it("ignores a network report from a port it has already expired", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("expired", () => h.kinds().includes("port_expired"), 4000);
-    const before = h.host.stream().state().kind;
-    tab.post({ type: "network", online: false });
-    await tick(3 * HB);
-    expect(h.host.stream().state().kind).toBe(before);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h, { resumed: true });
+    await beats(4);
+    expect(h.ofKind("port_expired")).toHaveLength(1);
+    expect(h.host.stream().state()).toMatchObject({ kind: "open", visible: false });
+    t.send({ type: "network", online: false });
+    await settle();
+    expect(h.host.stream().state()).toMatchObject({ kind: "open", online: true });
   });
 
   it("revalidates when a hidden profile's only tab becomes visible", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach({ visible: false });
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    t.hello();
-    await waitFor("open", () => h.host.stream().state().kind === "open", 4000);
-    tab.post({ type: "visibility", ev: "visible" });
-    await waitFor(
-      "revalidate",
-      () => h.events.some((e) => e.kind === "revalidate" && e.cause === "visible"),
-      4000,
-    );
-    expect(h.events.some((e) => e.kind === "revalidate" && e.cause === "visible")).toBe(true);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h, { resumed: true });
+    t.send({ type: "visibility", ev: "hidden" });
+    await settle();
+    expect(h.host.stream().state()).toMatchObject({ kind: "open", visible: false });
+    expect(h.runs).toEqual([]);
+    t.send({ type: "visibility", ev: "visible" });
+    await settle();
+    expect(h.runs.map((r) => r.ctx.cause)).toEqual(["visible"]);
+    expect(h.host.stream().state()).toMatchObject({ kind: "open", visible: true });
   });
 
   it("carries a tab's recorded visibility back into the fold when the port is repaired", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach({ visible: false });
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    t.hello();
-    await waitFor("open", () => h.host.stream().state().kind === "open", 4000);
-    tab.post({ type: "visibility", ev: "visible" });
-    await waitFor(
-      "visible",
-      () => h.events.some((e) => e.kind === "revalidate" && e.cause === "visible"),
-      4000,
-    );
-    await waitFor("expired", () => h.kinds().includes("port_expired"), 4000);
-    const runsBefore = h.events.filter((e) => e.kind === "revalidate").length;
-    tab.post({ type: "heartbeat_ack", seq: 1 });
-    await waitFor("repaired", () => h.kinds().includes("port_repaired"), 4000);
-    // The repair re-attaches the tab at the visibility it last reported, so the profile
-    // becomes visible again and earns a run; a repair at hidden would earn none.
-    await waitFor(
-      "run after repair",
-      () => h.events.filter((e) => e.kind === "revalidate").length > runsBefore,
-      4000,
-    );
-    expect(h.events.filter((e) => e.kind === "revalidate").length).toBeGreaterThan(runsBefore);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach({ visible: false });
+    await settle();
+    expect(h.host.stream().state().kind).toBe("hidden_closed");
+    await beats(4);
+    expect(h.ofKind("port_expired")).toHaveLength(1);
+    t.send({ type: "visibility", ev: "visible" });
+    await settle();
+    expect(h.host.stream().state().kind).toBe("hidden_closed");
+    expect(h.sf.connections).toEqual([]);
+    t.send({ type: "heartbeat_ack", seq: 4 });
+    await settle();
+    expect(h.ofKind("port_repaired")).toHaveLength(1);
+    expect(h.host.stream().state().kind).toBe("connecting");
+    expect(h.sf.connections).toHaveLength(1);
+    expect(h.runs.map((r) => r.ctx.cause)).toEqual(["visible"]);
   });
 
   it("removes a tab that reports pagehide", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    tab.post({ type: "visibility", ev: "pagehide" });
-    await waitFor("detached", () => h.kinds().includes("tab_detached"));
-    expect(h.events.filter((e) => e.kind === "tab_detached")).toEqual([
-      { kind: "tab_detached", cause: "pagehide" },
-    ]);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await settle();
+    t.send({ type: "visibility", ev: "pagehide" });
+    await settle();
+    expect(h.ofKind("tab_detached")).toEqual([{ kind: "tab_detached", cause: "pagehide" }]);
   });
 
-  it("seeds the profile's network reading from the worker's own navigator", async () => {
+  // With no tab attached nothing has reported a network reading, so the stream reads the seed alone.
+  it("seeds the profile's network reading from the worker's own navigator", () => {
     vi.stubGlobal("navigator", { onLine: false });
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach({ online: false });
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    expect(h.host.stream().state().kind).toBe("offline");
+    const h = hostHarness();
+    h.host.stream().start();
+    expect(h.host.stream().state()).toMatchObject({ kind: "hidden_closed", online: false });
   });
 
-  it("treats a navigator that reports online as a reason to connect", async () => {
+  it("reads a navigator that reports online as online", () => {
     vi.stubGlobal("navigator", { onLine: true });
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    expect(h.host.stream().state().kind).toBe("connecting");
+    const h = hostHarness();
+    h.host.stream().start();
+    expect(h.host.stream().state()).toMatchObject({ kind: "hidden_closed", online: true });
   });
 
-  it("treats a navigator with no onLine reading as a reason to connect", async () => {
+  it("reads a navigator with no onLine reading as online", () => {
     vi.stubGlobal("navigator", {});
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    expect(h.host.stream().state().kind).toBe("connecting");
+    const h = hostHarness();
+    h.host.stream().start();
+    expect(h.host.stream().state()).toMatchObject({ kind: "hidden_closed", online: true });
   });
 });
 
 describe("createWorkerHost: routing a run to the tabs", () => {
   it("resolves a run with no acknowledging tab without routing anything", async () => {
-    const t = transport();
-    const settled: string[] = [];
-    const h = harness({
-      fetch: t.fetch,
-      async revalidate(ctx, tabs) {
-        expect(tabs.size()).toBe(0);
-        await tabs.run(ctx);
-        settled.push("resolved");
-      },
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h);
+    const run = h.runs[0]!;
+    t.send({ type: "detach", cause: "unload" });
+    await settle();
+    expect(run.tabs.size()).toBe(0);
+    let settled = false;
+    void run.tabs.run(run.ctx).then(() => {
+      settled = true;
     });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("resolved", () => settled.length === 1, 4000);
-    expect(settled).toEqual(["resolved"]);
+    await settle();
+    expect(settled).toBe(true);
+    expect(t.ofType("revalidate_run")).toEqual([]);
   });
 
   it("routes the run to each tab and settles when every one answers done", async () => {
-    const t = transport();
-    const settled: string[] = [];
-    const h = harness({
-      fetch: t.fetch,
-      async revalidate(ctx, tabs) {
-        await tabs.run(ctx, { changed: [], removed: [] });
-        settled.push("resolved");
-      },
+    const h = hostHarness();
+    const a = tab(h, "a");
+    const b = tab(h, "b");
+    a.attach();
+    b.attach();
+    await hello(h);
+    const run = h.runs[0]!;
+    let settled = false;
+    void run.tabs.run(run.ctx, { changed: [], removed: [] }).then(() => {
+      settled = true;
     });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    t.hello();
-    await waitFor("routed", () => tab.ofType("revalidate_run").length >= 1, 4000);
-    const run = tab.ofType("revalidate_run")[0];
-    expect(run?.ctx).toMatchObject({ changed: [], removed: [] });
-    tab.post({ type: "revalidate_done", runId: run?.runId ?? 0 });
-    await waitFor("resolved", () => settled.length === 1, 4000);
-    expect(settled).toEqual(["resolved"]);
+    await settle();
+    const routedA = a.ofType("revalidate_run");
+    const routedB = b.ofType("revalidate_run");
+    expect(routedA).toMatchObject([{ ctx: { cause: "hello", changed: [], removed: [] } }]);
+    expect(routedB).toMatchObject([{ runId: routedA[0]!.runId }]);
+    a.send({ type: "revalidate_done", runId: routedA[0]!.runId });
+    await settle();
+    expect(settled).toBe(false);
+    b.send({ type: "revalidate_done", runId: routedB[0]!.runId });
+    await settle();
+    expect(settled).toBe(true);
   });
 
   it("rejects the run with the cause the tab reported", async () => {
-    const t = transport();
-    const failures: string[] = [];
-    const h = harness({
-      fetch: t.fetch,
-      async revalidate(ctx, tabs) {
-        try {
-          await tabs.run(ctx);
-        } catch (e: unknown) {
-          failures.push(e instanceof Error ? e.message : String(e));
-        }
-      },
-    });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    t.hello();
-    await waitFor("routed", () => tab.ofType("revalidate_run").length >= 1, 4000);
-    const run = tab.ofType("revalidate_run")[0];
-    tab.post({
-      type: "revalidate_failed",
-      runId: run?.runId ?? 0,
-      cause: "tab could not apply",
-    });
-    await waitFor("rejected", () => failures.length === 1, 4000);
-    expect(failures).toEqual(["tab could not apply"]);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h);
+    const run = h.runs[0]!;
+    const outcome = expect(run.tabs.run(run.ctx)).rejects.toThrow(/^tab could not apply$/);
+    await settle();
+    const routed = t.ofType("revalidate_run")[0]!;
+    t.send({ type: "revalidate_failed", runId: routed.runId, cause: "tab could not apply" });
+    await settle();
+    await outcome;
   });
 
   it("rejects a routed run whose signal aborts before the tabs answer", async () => {
-    const t = transport();
-    const failures: string[] = [];
-    const h = harness({
-      fetch: t.fetch,
-      async revalidate(ctx, tabs) {
-        try {
-          await tabs.run(ctx);
-        } catch (e: unknown) {
-          failures.push(e instanceof Error ? e.message : String(e));
-        }
-      },
-    });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    t.hello();
-    await waitFor("routed", () => tab.ofType("revalidate_run").length >= 1, 4000);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await hello(h);
+    const run = h.runs[0]!;
+    const outcome = expect(run.tabs.run(run.ctx)).rejects.toThrow(/^revalidate run aborted$/);
+    await settle();
+    expect(t.ofType("revalidate_run")).toHaveLength(1);
     h.host.stream().stop();
-    await waitFor("rejected", () => failures.length === 1, 4000);
-    expect(failures).toEqual(["revalidate run aborted"]);
+    await outcome;
   });
 });
 
 describe("createWorkerHost: losing authorisation", () => {
+  async function digestRejects(reason: unknown): Promise<Host> {
+    const h = hostHarness();
+    tab(h, "t1").attach();
+    await hello(h);
+    expect(h.runs).toHaveLength(1);
+    h.runs[0]!.reject(reason);
+    await settle();
+    return h;
+  }
+
   it("stops the profile's stream when the digest answers 401", async () => {
-    const t = transport();
-    const h = harness({
-      fetch: t.fetch,
-      revalidate: () => Promise.reject({ status: 401 }),
-    });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("auth_lost", () => h.kinds().includes("auth_lost"), 4000);
-    expect(h.events.filter((e) => e.kind === "auth_lost")).toEqual([
-      { kind: "auth_lost", route: "digest", status: 401 },
-    ]);
+    const h = await digestRejects({ status: 401 });
+    expect(h.ofKind("auth_lost")).toEqual([{ kind: "auth_lost", route: "digest", status: 401 }]);
     expect(h.host.stream().state().kind).toBe("stopped");
   });
 
   it("leaves the stream running when the digest fails with another status", async () => {
-    const t = transport();
-    const h = harness({
-      fetch: t.fetch,
-      revalidate: () => Promise.reject({ status: 500 }),
-    });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("failed", () => h.kinds().includes("revalidate_failed"), 4000);
-    expect(h.kinds()).not.toContain("auth_lost");
+    const h = await digestRejects(Object.assign(new Error("server error"), { status: 500 }));
+    expect(h.ofKind("auth_lost")).toEqual([]);
+    expect(h.ofKind("revalidate_failed").map((e) => e.cause)).toEqual(["server error"]);
+    expect(h.host.stream().state().kind).toBe("backoff");
   });
 
   it("leaves the stream running when the digest rejects with no status at all", async () => {
-    const t = transport();
-    const h = harness({
-      fetch: t.fetch,
-      revalidate: () => Promise.reject(new Error("network")),
-    });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("failed", () => h.kinds().includes("revalidate_failed"), 4000);
-    expect(h.kinds()).not.toContain("auth_lost");
+    const h = await digestRejects(new Error("network"));
+    expect(h.ofKind("auth_lost")).toEqual([]);
+    expect(h.ofKind("revalidate_failed").map((e) => e.cause)).toEqual(["network"]);
+    expect(h.host.stream().state().kind).toBe("backoff");
   });
 
-  // null is typeof "object", so the guard's second arm is the only thing standing between
-  // this rejection and a property read on null.
+  // null is typeof "object": without statusOf's null arm the status read throws, and the run fails
+  // with that TypeError instead of the rejection the application raised.
   it("leaves the stream running when the digest rejects with null", async () => {
-    const t = transport();
-    const h = harness({
-      fetch: t.fetch,
-      revalidate: () => Promise.reject(null),
-    });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("failed", () => h.kinds().includes("revalidate_failed"), 4000);
-    expect(h.kinds()).not.toContain("auth_lost");
+    const h = await digestRejects(null);
+    expect(h.ofKind("auth_lost")).toEqual([]);
+    expect(h.ofKind("revalidate_failed").map((e) => e.cause)).toEqual(["null"]);
+    expect(h.host.stream().state().kind).toBe("backoff");
   });
 
   it("leaves the stream running when the digest rejects with a string", async () => {
-    const t = transport();
-    const h = harness({
-      fetch: t.fetch,
-      revalidate: () => Promise.reject("refused"),
-    });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("failed", () => h.kinds().includes("revalidate_failed"), 4000);
-    expect(h.kinds()).not.toContain("auth_lost");
+    const h = await digestRejects("refused");
+    expect(h.ofKind("auth_lost")).toEqual([]);
+    expect(h.ofKind("revalidate_failed").map((e) => e.cause)).toEqual(["refused"]);
+    expect(h.host.stream().state().kind).toBe("backoff");
   });
 
   it("stops the profile's stream when an alive acknowledgement answers 401", async () => {
-    const t = transport();
-    t.aliveStatus = 401;
-    const h = harness({ fetch: t.fetch, alive: true });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("open", () => h.host.stream().state().kind === "open", 4000);
-    t.keepalive();
-    await waitFor("auth_lost", () => h.kinds().includes("auth_lost"), 4000);
-    expect(h.events.filter((e) => e.kind === "auth_lost")).toEqual([
-      { kind: "auth_lost", route: "alive", status: 401 },
-    ]);
+    const h = hostHarness({ alive: true });
+    h.sf.onPost(() => new Response(null, { status: 401 }));
+    tab(h, "t1").attach();
+    await hello(h, { resumed: true });
+    h.sf.connections[0]!.push(KEEPALIVE_FRAME);
+    await settle();
+    expect(h.sf.requests.filter((r) => r.method === "POST").map((r) => r.url)).toEqual([URL_ALIVE]);
+    expect(h.ofKind("auth_lost")).toEqual([{ kind: "auth_lost", route: "alive", status: 401 }]);
     expect(h.host.stream().state().kind).toBe("stopped");
   });
 
   it("leaves the stream running when an alive acknowledgement answers 200", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch, alive: true });
-    h.host.stream().start();
-    t.hello();
-    await waitFor("open", () => h.host.stream().state().kind === "open", 4000);
-    t.keepalive();
-    await waitFor("ack", () => h.kinds().includes("alive_ack"), 4000);
-    expect(h.kinds()).not.toContain("auth_lost");
+    const h = hostHarness({ alive: true });
+    h.sf.onPost(() => new Response(null, { status: 200 }));
+    tab(h, "t1").attach();
+    await hello(h, { resumed: true });
+    h.sf.connections[0]!.push(KEEPALIVE_FRAME);
+    await settle();
+    expect(h.ofKind("alive_ack")).toEqual([{ kind: "alive_ack", ok: true, status: 200 }]);
+    expect(h.ofKind("auth_lost")).toEqual([]);
     expect(h.host.stream().state().kind).toBe("open");
   });
 });
 
 describe("createWorkerHost: leaving", () => {
   it("stops the profile's stream on a logout detach", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const tab = h.tab();
-    tab.attach();
-    await waitFor("attached", () => h.kinds().includes("tab_attached"));
-    tab.post({ type: "detach", cause: "logout" });
-    await waitFor("stopped", () => h.host.stream().state().kind === "stopped", 4000);
+    const h = hostHarness();
+    const t = tab(h, "t1");
+    t.attach();
+    await settle();
+    t.send({ type: "detach", cause: "logout" });
+    await settle();
+    expect(h.ofKind("tab_detached")).toEqual([{ kind: "tab_detached", cause: "logout" }]);
     expect(h.host.stream().state().kind).toBe("stopped");
   });
 
   it("leaves the stream running on an unload detach", async () => {
-    const t = transport();
-    const h = harness({ fetch: t.fetch });
-    const a = h.tab();
-    const b = h.tab();
+    const h = hostHarness();
+    const a = tab(h, "a");
+    const b = tab(h, "b");
     a.attach();
     b.attach();
-    await waitFor("both", () => h.events.filter((e) => e.kind === "tab_attached").length === 2);
-    a.post({ type: "detach", cause: "unload" });
-    await waitFor("detached", () => h.kinds().includes("tab_detached"));
-    expect(h.host.stream().state().kind).not.toBe("stopped");
+    await settle();
+    expect(h.ofKind("tab_attached")).toHaveLength(2);
+    a.send({ type: "detach", cause: "unload" });
+    await settle();
+    expect(h.ofKind("tab_detached")).toEqual([{ kind: "tab_detached", cause: "unload" }]);
+    expect(h.host.stream().state().kind).toBe("connecting");
+    expect(h.sf.connections[0]!.request.aborted).toBe(false);
   });
 });
