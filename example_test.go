@@ -12,7 +12,7 @@ import (
 
 	"github.com/cplieger/sse"
 	"github.com/cplieger/sse/ssetest"
-	"github.com/cplieger/webhttp/v3"
+	"github.com/cplieger/webhttp/v4"
 )
 
 func ExampleNew() {
