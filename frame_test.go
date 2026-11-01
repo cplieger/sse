@@ -27,6 +27,10 @@ func TestWriteFrame_table(t *testing.T) {
 		{name: "CRSplits", id: id, data: "a\rb", want: "id: " + id + "\ndata: a\ndata: b\n\n"},
 		{name: "MixedTerminators", data: "a\r\nb\rc\nd", want: "data: a\ndata: b\ndata: c\ndata: d\n\n"},
 		{name: "TrailingTerminatorYieldsEmptyLine", data: "a\n", want: "data: a\ndata: \n\n"},
+		{name: "TrailingCRYieldsEmptyLine", data: "a\r", want: "data: a\ndata: \n\n"},
+		{name: "LeadingLF", data: "\nb", want: "data: \ndata: b\n\n"},
+		{name: "LeadingCR", data: "\rb", want: "data: \ndata: b\n\n"},
+		{name: "LFRightAfterCRLF", data: "a\r\n\nb", want: "data: a\ndata: \ndata: b\n\n"},
 		{name: "EmptyDataOneLine", id: id, data: "", want: "id: " + id + "\ndata: \n\n"},
 	}
 	for _, tt := range tests {

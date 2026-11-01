@@ -137,6 +137,8 @@ func TestDigest_validationTable(t *testing.T) {
 		{"kind 33 bytes", `{"subjects":[` + sub(strings.Repeat("k", 33), "", "1") + `]}`, "kind"},
 		{"ref over 512 bytes", `{"subjects":[` + sub("chat", strings.Repeat("r", 513), "1") + `]}`, "ref"},
 		{"ref with U+202E", `{"subjects":[` + sub("chat", "a\u202eb", "1") + `]}`, "ref"},
+		{"ref with U+202A", `{"subjects":[` + sub("chat", "a\u202ab", "1") + `]}`, "ref"},
+		{"ref with U+2069", `{"subjects":[` + sub("chat", "a\u2069b", "1") + `]}`, "ref"},
 		{"ref with U+0085", `{"subjects":[` + sub("chat", "a\u0085b", "1") + `]}`, "ref"},
 		{"ref with LF", `{"subjects":[` + sub("chat", "a\nb", "1") + `]}`, "ref"},
 		{"ref with U+2028", `{"subjects":[` + sub("chat", "a\u2028b", "1") + `]}`, "ref"},
@@ -394,6 +396,9 @@ func TestSanitizeLogValue_behavior(t *testing.T) {
 		{"cap on rune boundary", strings.Repeat("x", 126) + "\u00e9\u00e9", strings.Repeat("x", 126) + "\u00e9"},
 		{"cap exact", strings.Repeat("y", 128), strings.Repeat("y", 128)},
 		{"cap over", strings.Repeat("z", 129), strings.Repeat("z", 128)},
+		{"cap backs off a rune split at the cap", strings.Repeat("x", 127) + "\u00e9tail", strings.Repeat("x", 127)},
+		{"cut keeps an earlier replacement character", "\ufffd" + strings.Repeat("x", 124) + "\u00e9z", "\ufffd" + strings.Repeat("x", 124)},
+		{"cap over continuation bytes only", strings.Repeat("\x80", 200), ""},
 	}
 	for _, tc := range tests {
 		t.Run(strings.ReplaceAll(tc.name, " ", "_"), func(t *testing.T) {
@@ -406,11 +411,46 @@ func TestSanitizeLogValue_behavior(t *testing.T) {
 
 func TestDigest_nilOptionAndDefaults(t *testing.T) {
 	h := mustNew(t, withEpoch(testEpoch))
-	handler := h.DigestHandler(staticResolver(nil), nil, WithDigestMaxSubjects(0), WithDigestMaxBody(-1))
+	handler := h.DigestHandler(staticResolver(map[Subject]State{{Kind: "chat", Ref: "c1"}: current("chat", "c1", "1")}), nil,
+		WithDigestMaxSubjects(0), WithDigestMaxSubjects(-1), WithDigestMaxBody(0), WithDigestMaxBody(-1))
 	body := bytes.Repeat([]byte(" "), 4096)
-	body = append(body, `{"subjects":[]}`...)
+	body = append(body, digestBody(t, testEpoch, Held{Subject{"chat", "c1"}, "1"})...)
 	rec, got := postDigest(t, handler, string(body))
-	if rec.Code != http.StatusOK || got["checked"] != float64(0) {
-		t.Errorf("status %d response %v, want 200 (non-positive caps keep the defaults, a nil option is skipped)", rec.Code, got)
+	if rec.Code != http.StatusOK || got["checked"] != float64(1) {
+		t.Errorf("status %d response %v, want 200 checked 1 (non-positive caps keep the defaults, a nil option is skipped)", rec.Code, got)
+	}
+}
+
+func TestDigest_maxSubjectsOptionCaps(t *testing.T) {
+	h := mustNew(t, withEpoch(testEpoch))
+	handler := h.DigestHandler(staticResolver(nil), WithDigestMaxSubjects(1))
+	rec, got := postDigest(t, handler, digestBody(t, testEpoch, Held{Subject{"chat", "c1"}, "1"}, Held{Subject{"chat", "c2"}, "1"}))
+	if msg, _ := got["error"].(string); rec.Code != http.StatusBadRequest || msg != "subjects holds 2 entries, max 1" {
+		t.Errorf("two subjects under WithDigestMaxSubjects(1): status %d response %v, want 400 naming the cap of 1", rec.Code, got)
+	}
+	rec, got = postDigest(t, handler, digestBody(t, testEpoch, Held{Subject{"chat", "c1"}, "1"}))
+	if rec.Code != http.StatusOK || got["checked"] != float64(1) {
+		t.Errorf("one subject under WithDigestMaxSubjects(1): status %d response %v, want 200 checked 1", rec.Code, got)
+	}
+}
+
+func TestDigest_kindAcceptsEveryAllowedClass(t *testing.T) {
+	h := mustNew(t, withEpoch(testEpoch))
+	for _, kind := range []string{"z", "a0", "a9", "a_", "az09_"} {
+		handler := h.DigestHandler(staticResolver(map[Subject]State{{Kind: kind, Ref: "r"}: current(kind, "r", "1")}))
+		rec, got := postDigest(t, handler, digestBody(t, testEpoch, Held{Subject{kind, "r"}, "1"}))
+		if rec.Code != http.StatusOK || got["checked"] != float64(1) {
+			t.Errorf("kind %q: status %d response %v, want 200 checked 1", kind, rec.Code, got)
+		}
+	}
+}
+
+func TestDigest_versionAcceptsPrintableASCIIEdges(t *testing.T) {
+	h := mustNew(t, withEpoch(testEpoch))
+	const edges = " v~"
+	handler := h.DigestHandler(staticResolver(map[Subject]State{{Kind: "chat", Ref: "c1"}: current("chat", "c1", edges)}))
+	rec, got := postDigest(t, handler, digestBody(t, testEpoch, Held{Subject{"chat", "c1"}, edges}))
+	if rec.Code != http.StatusOK || got["checked"] != float64(1) || got["must_refetch"] != false {
+		t.Errorf("version %q (space and tilde, the printable ASCII edges): status %d response %v, want 200 checked 1", edges, rec.Code, got)
 	}
 }

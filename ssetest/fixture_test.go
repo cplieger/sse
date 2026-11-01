@@ -484,3 +484,69 @@ func TestFixture_restartMintsNewEpoch(t *testing.T) {
 		t.Errorf("digest under the old epoch = %v, want must_refetch with the new epoch", digest)
 	}
 }
+
+func TestFixture_presenceRowDropsOnDisconnect(t *testing.T) {
+	f, base := fixtureServer(t)
+	resp, stream, _ := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
+	if frames, err := stream.Read(1); err != nil || frames[0].Data != `{"type":"connected"}` {
+		t.Fatalf("hook frame = %+v (%v), want the connected frame, which follows the arrival", frames, err)
+	}
+	if st := state(t, base); len(st.Presence) != 1 || st.Presence[0].Connected != 1 {
+		t.Fatalf("presence after connect = %+v, want tab-1 connected once", st.Presence)
+	}
+	resp.Body.Close()
+	pollUntil(t, "the closed stream to unregister", func() bool { return f.Hub().ClientCount() == 0 })
+	pollUntil(t, "the departure to reach the presence table", func() bool { return len(state(t, base).Events) == 2 })
+	st := state(t, base)
+	if len(st.Presence) != 1 || st.Presence[0].Connected != 0 || !st.Presence[0].Gone || st.Transitions.Expired != 1 {
+		t.Errorf("presence after the only stream closed = %+v %+v, want tab-1 at zero connections, gone, one expired transition", st.Presence, st.Transitions)
+	}
+}
+
+func TestFixture_eventsTopicQueryFiltersTheStream(t *testing.T) {
+	_, base := fixtureServer(t)
+	resp := get(t, base+"/events?topic=mine", nil)
+	defer resp.Body.Close()
+	stream := NewFrameReader(resp.Body)
+	if frames, err := stream.Read(3); err != nil || frames[2].Data != `{"type":"connected"}` {
+		t.Fatalf("handshake and hook frame = %+v (%v), want retry, hello, connected", frames, err)
+	}
+	control(t, base, "publish", `{"topic":"other","data":"not for this stream"}`)
+	control(t, base, "publish", `{"topic":"mine","data":"for this stream"}`)
+	frames, err := stream.Read(1)
+	if err != nil || frames[0].Data != "for this stream" {
+		t.Errorf("first published frame on /events?topic=mine = %+v (%v), want the frame published on topic mine", frames, err)
+	}
+}
+
+func TestFixture_publishSizeIsExactAtTheFirstOffset(t *testing.T) {
+	f, base := fixtureServer(t)
+	var refused map[string]any
+	if status := post(t, base+"/control/publish", `{"size":1048577}`, nil, &refused); status != http.StatusUnprocessableEntity || refused["code"] != "publish_refused" {
+		t.Errorf("publish of MaxFrameBytes+1 on a fresh hub = %d %v, want 422 publish_refused", status, refused)
+	}
+	var resp publishResponse
+	if status := post(t, base+"/control/publish", `{"size":1048576}`, nil, &resp); status != http.StatusOK || resp.Head != "1" {
+		t.Errorf("publish of an exactly MaxFrameBytes frame on a fresh hub = %d %+v, want 200 at offset 1", status, resp)
+	}
+	if got := f.Hub().Position().Head; got != 1 {
+		t.Errorf("head = %d, want 1 (only the frame at the cap was accepted)", got)
+	}
+}
+
+func TestFixture_acknowledgementIsAliveAtTheInstantItLands(t *testing.T) {
+	_, base := fixtureServer(t)
+	resp, stream, _ := openEvents(t, base, http.Header{"SSE-Client": {"tab-1"}})
+	defer resp.Body.Close()
+	if frames, err := stream.Read(1); err != nil || frames[0].Data != `{"type":"connected"}` {
+		t.Fatalf("hook frame = %+v (%v), want the connected frame, which follows the arrival", frames, err)
+	}
+	control(t, base, "alive-window", `{"ms":0}`)
+	before := state(t, base).Transitions
+	if status := post(t, base+"/alive", ``, http.Header{"SSE-Client": {"tab-1"}}, nil); status != http.StatusNoContent {
+		t.Fatalf("POST /alive = %d, want 204", status)
+	}
+	if after := state(t, base).Transitions; after.Alive != before.Alive+1 {
+		t.Errorf("transitions around an acknowledgement under a zero alive window = %+v then %+v, want one more alive transition", before, after)
+	}
+}

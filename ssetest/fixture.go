@@ -190,10 +190,8 @@ func (f *Fixture) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if topic := r.URL.Query().Get("topic"); topic != "" {
 		opts = append(opts, sse.WithTopic(topic))
 	}
-	if delay > 0 {
-		time.Sleep(delay)
-	}
-	hub.Serve(&streamWriter{ResponseWriter: w, f: f, stallEpoch: -1}, r, opts...)
+	time.Sleep(delay)
+	hub.Serve(&streamWriter{ResponseWriter: w, f: f}, r, opts...)
 }
 
 // connectHook applies the hook-sleep and hook-fail flags, then writes the
@@ -202,9 +200,7 @@ func (f *Fixture) connectHook(sw *sse.Writer) error {
 	f.mu.Lock()
 	sleep, fail := f.hookSleep, f.hookFail
 	f.mu.Unlock()
-	if sleep > 0 {
-		time.Sleep(sleep)
-	}
+	time.Sleep(sleep)
 	if fail {
 		return errors.New("ssetest: hook failure requested")
 	}
@@ -273,16 +269,14 @@ func (s *streamWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 // isFrame reports whether one write carries an event: the retry field and
 // comments do not count.
 func isFrame(b []byte) bool {
-	return len(b) > 0 && (strings.HasPrefix(string(b), "id: ") || strings.HasPrefix(string(b), "event: ") || strings.HasPrefix(string(b), "data: "))
+	return strings.HasPrefix(string(b), "id: ") || strings.HasPrefix(string(b), "event: ") || strings.HasPrefix(string(b), "data: ")
 }
 
 func (f *Fixture) handleDigest(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	hub, delay := f.hub, f.delayDigest
 	f.mu.Unlock()
-	if delay > 0 {
-		time.Sleep(delay)
-	}
+	time.Sleep(delay)
 	hub.DigestHandler(f.resolve).ServeHTTP(w, r)
 }
 
