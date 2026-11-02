@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/cplieger/sse"
-	"github.com/cplieger/webhttp/v3"
+	"github.com/cplieger/webhttp/v4"
 )
 
 const (
