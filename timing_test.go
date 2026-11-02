@@ -104,7 +104,7 @@ func TestTiming_goModRequires(t *testing.T) {
 			got = append(got, strings.Fields(line)[0])
 		}
 	}
-	want := []string{"github.com/cplieger/webhttp/v3", "pgregory.net/rapid"}
+	want := []string{"github.com/cplieger/webhttp/v4", "pgregory.net/rapid"}
 	if !slices.Equal(got, want) {
 		t.Errorf("go.mod requires = %q, want exactly %q", got, want)
 	}

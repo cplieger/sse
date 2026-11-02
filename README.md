@@ -4,7 +4,7 @@
 
 sse keeps browser tabs in step with your Go server's Server-Sent Events through sleep, reconnects and restarts, with a Go hub and a matching TypeScript browser client.
 
-A native `EventSource` cannot tell a silent stream from a dead one, so a tab that slept can silently stop updating. The sse hub and client replace the cursors, heartbeats and resync code you would write around that. The Go module needs Go 1.27.1 or later and one dependency, [webhttp](https://github.com/cplieger/webhttp). The TypeScript package has no runtime dependencies. Both are Apache-2.0.
+A native `EventSource` cannot tell a silent stream from a dead one, so a tab that slept can silently stop updating. The sse hub and client replace the cursors, heartbeats and resync code you would write around that. The Go module needs Go 1.27.3 or later and one dependency, [webhttp](https://github.com/cplieger/webhttp). The TypeScript package has no runtime dependencies. Both are Apache-2.0.
 
 ## Why use it
 
