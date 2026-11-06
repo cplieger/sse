@@ -1,5 +1,8 @@
 # sse
 
+> Moved to [`github.com/cplieger/go/sse`](https://github.com/cplieger/go/tree/dev/sse), which also publishes `@cplieger/sse` from `sse/web`.
+> **Archived 2026-11-06. This repository is read-only. The published Go module and npm package stay available.**
+
 [![Go Reference](https://pkg.go.dev/badge/github.com/cplieger/sse.svg)](https://pkg.go.dev/github.com/cplieger/sse) [![npm](https://img.shields.io/npm/v/@cplieger/sse)](https://www.npmjs.com/package/@cplieger/sse) [![JSR](https://jsr.io/badges/@cplieger/sse)](https://jsr.io/@cplieger/sse) [![Mutation](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation.json)](https://github.com/cplieger/sse/issues?q=label%3Agremlins-tracker) [![Mutation (TS)](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cplieger/sse/badges/mutation-ts.json)](https://github.com/cplieger/sse/issues?q=label%3Astryker-tracker)
 
 sse keeps browser tabs in step with your Go server's Server-Sent Events through sleep, reconnects and restarts, with a Go hub and a matching TypeScript browser client.
