@@ -1,5 +1,8 @@
 # @cplieger/sse
 
+> Moved to [`github.com/cplieger/go/sse`](https://github.com/cplieger/go/tree/dev/sse), which also publishes `@cplieger/sse` from `sse/web`.
+> **Archived 2026-11-06. This repository is read-only. The published Go module and npm package stay available.**
+>
 > A Server-Sent-Events client that resumes exactly where it stopped, notices a dead stream, and reconciles after a sleep.
 
 The TypeScript half of [cplieger/sse](https://github.com/cplieger/sse), speaking the wire the Go `sse` package serves: every frame carries an `epoch:offset` cursor, every connection opens with a hello that says whether that cursor was honoured, and the client turns both into a projection an application can trust across a page hide, a phone lock or a network change. A native `EventSource` cannot set a request header, cannot tell a silent stream from an idle one, and reconnects on its own schedule with whatever `Last-Event-ID` it last saw; this client owns the connection over `fetch` and `ReadableStream` instead, presents the cursor it holds, measures liveness on bytes, closes a hidden tab's stream after a minute and reopens it on return, backs off with full jitter, and holds incoming frames while the application asks the server what changed. It has no runtime dependencies, and the DOM readers (`document.visibilityState`, `navigator.onLine`) are injectable, so the same runtime runs in Node against the Go test fixture.
